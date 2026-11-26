@@ -1,0 +1,4 @@
+# id<TAB>tipo<TAB>pregunta<TAB>ancla1 (regex que debe estar en el turno correcto)<TAB>ancla2 (solo tipo M)
+# Ejemplo ficticio. Arma el tuyo con preguntas que de verdad harías y anclas que identifiquen UN turno de tus conversaciones.
+P1	T	¿qué decidimos sobre el formato de los reportes semanales?	reportes semanales.{0,80}formato
+P2	T	¿cómo quedó la configuración del entorno de pruebas?	entorno de pruebas.{0,80}(variable|configur)

@@ -1,0 +1,15 @@
+# nunca subir: copias de tus conversaciones, modelos descargados, entornos y secretos
+*.db
+*.db-journal
+*.jsonl
+.env
+.env.*
+*.pem
+*.key
+venv/
+.venv/
+__pycache__/
+*.pyc
+.memoria-local/
+.DS_Store
+.context/directivas-mapa.md

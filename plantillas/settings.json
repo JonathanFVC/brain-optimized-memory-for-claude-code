@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 -I \"${CLAUDE_PROJECT_DIR:-$PWD}/scripts/directivas-buscador/directivas_buscador.py\" mapa >/dev/null 2>&1 || true" },
+          { "type": "command", "command": "python3 -I \"${CLAUDE_PROJECT_DIR:-$PWD}/scripts/buscador/buscar_sesiones.py\" \"\" --stats >/dev/null 2>&1 || true" }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 -I \"${CLAUDE_PROJECT_DIR:-$PWD}/scripts/directivas-buscador/directivas_buscador.py\" hook 2>/dev/null || true" }
+        ]
+      }
+    ]
+  }
+}

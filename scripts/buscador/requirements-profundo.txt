@@ -1,0 +1,6 @@
+# Paquetes del modo --profundo (versiones revisadas el 2026-11-25: pip check limpio y sin avisos en OSV). Lista completa fijada en requirements-profundo.lock.txt
+torch==2.15.0
+transformers==5.24.1
+sentence-transformers==6.3.0
+numpy==2.5.5
+huggingface_hub==2.4.0
