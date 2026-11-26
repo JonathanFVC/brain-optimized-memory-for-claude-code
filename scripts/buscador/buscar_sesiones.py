@@ -4,10 +4,11 @@ Qué hace: indexa los turnos (mensaje del usuario + texto de Claude) de las sesi
 5 letras (une variantes como transcripción/transcribir) y, si la pregunta trae una fecha en español («ayer», «hace 5 días», «el 12 de noviembre», «la semana pasada»…), filtra por ese día.
 
 Uso:  python3 -I buscar_sesiones.py "¿qué decidimos del micrófono?" [-k 5] [--sesiones DIR_O_GLOB] [--db ARCHIVO.db]
-      [--excluir UUID ...] [--hoy AAAA-MM-DD] [--reindex] [--sin-sync] [--json] [--stats] [--profundo] [--solo-v2]
-Tres modos: por defecto LIGERO = V2 + reordenador gte-multilingual-reranker-base sobre 20 candidatos (≈ 7 s por comando); --profundo = además vectores multilingual-e5-small (≈ 9 s por comando; gana en preguntas
-parafraseadas o vagas); --solo-v2 = solo BM25, sin modelos (rápido, pero de menor precisión; ver el README). Los modos con modelos corren en un programa aparte (buscar_profundo.py) en un entorno aislado y SIN RED.
-Si el modo con modelos no está instalado, se avisa y se usa V2. Instalación de los modelos: scripts/buscador/preparar_profundo.py.
+      [--excluir UUID ...] [--hoy AAAA-MM-DD] [--reindex] [--sin-sync] [--json] [--stats] [--modo MODO] [--ligero|--profundo|--maximo|--ultraligero]
+Cuatro modos. El modo BASE (archivo `modo` en la carpeta de datos; se cambia con `--modo` o con el icono de la barra de menú de macOS) lo usa toda búsqueda sin bandera; por defecto MÁXIMO si está instalado y, si no, PROFUNDO. Una bandera explícita manda sobre el modo base.
+ULTRA LIGERO (`--ultraligero` o `--solo-v2`) = solo BM25, sin modelos (≈ 0.1 s; menor precisión; MRR 0.47). LIGERO (`--ligero`) = V2 + reordenador gte-multilingual-reranker-base sobre 20 candidatos (≈ 3–7 s; MRR 0.60). PROFUNDO (`--profundo`) = además vectores
+multilingual-e5-small (≈ 5–9 s; MRR 0.63; gana en preguntas parafraseadas o vagas). MÁXIMO (`--maximo`) = profundo + Qwen3-Reranker-0.6B reordena los 5 mejores y se promedia con gte (≈ 7–12 s; MRR 0.66; el mejor medido). Los modos con modelos corren en un programa aparte
+(buscar_profundo.py) en un entorno aislado y SIN RED. Si el modo con modelos no está instalado, se avisa y se usa V2. Instalación: scripts/buscador/preparar_profundo.py (Ligero y Profundo) y scripts/buscador/preparar_maximo.py (Máximo, opcional).
 Privacidad: el índice vive fuera del proyecto (por defecto ~/.memoria-local/sesiones.db; cambiar con BUSCADOR_HOME, carpeta 700, archivo 600) y guarda TODO sin enmascarar, contraseñas incluidas: es una copia sensible de tus
 conversaciones; no la copies ni la subas. --ocultar enmascara los secretos solo AL MOSTRAR. Nada sale del equipo.
 Resultado = mapa: se confirma abriendo la sesión (uuid:línea) y el estado vivo se verifica en vivo; puede traer decisiones ya superadas (mira la fecha)."""
@@ -36,6 +37,8 @@ INCLUIR_HERR = True  # incluye entradas (SQL, comandos, ediciones) y resultados 
 CAP_HERR, CAP_HERR_TURNO, CAP_RES = 1500, 8000, 600
 METODO = None  # etiqueta del registro de uso; buscar_profundo.py la cambia
 PROF = BASE / "profundo"  # entorno, modelos y vectores del modo --profundo (fuera del proyecto, carpeta 700)
+MODO_ARCHIVO = Path(os.environ.get("BUSCADOR_MODO_ARCHIVO", str(BASE / "modo")))  # modo base elegido en el icono de la barra de menú o con --modo
+MODOS = ("ultraligero", "ligero", "profundo", "maximo")  # nombres de cara al usuario; «v2» se acepta como sinónimo de ultraligero
 STOP = set("""a al algo ante con contra cual cuando de del desde donde el ella ellos en entre es esa ese eso esta este esto
 la las le les lo los me mi mis muy no nos o para pero por que se si sin sobre su sus te tu un una uno unos unas y ya
 como cuales cuantos hay hace hacer hacemos ver tiene tienen qué cómo cuál documentos documento archivo archivos script scripts""".split())
@@ -489,7 +492,19 @@ def _aislante():
     return None
 
 
-def lanzar_profundo(profundo=False):
+def modo_base():
+    """Modo base elegido (icono de la barra de menú o --modo): ultraligero, ligero, profundo o maximo. Sin archivo o con un valor raro: maximo."""
+    try: v = MODO_ARCHIVO.read_text(encoding="utf-8").strip().lower()
+    except OSError: v = ""
+    v = "ultraligero" if v == "v2" else v
+    return v if v in MODOS else "maximo"
+
+
+def guardar_modo(v):
+    MODO_ARCHIVO.parent.mkdir(parents=True, exist_ok=True); tmp = MODO_ARCHIVO.with_name(MODO_ARCHIVO.name + ".tmp"); tmp.write_text(v + "\n", encoding="utf-8"); os.replace(tmp, MODO_ARCHIVO)
+
+
+def lanzar_profundo(modo="--profundo"):
     """--profundo: corre buscar_profundo.py con el Python del entorno aislado, dentro de sandbox-exec sin red (capa de sistema; las otras dos capas, archivos y código, van dentro del programa)."""
     if os.environ.get("BUSCADOR_SESIONES_EN_PROFUNDO"):  # protección 2: jamás lanzarse a sí mismo (evita bucles de procesos)
         print("[alto] el modo profundo ya está corriendo; no se vuelve a lanzar.", file=sys.stderr)
@@ -498,7 +513,7 @@ def lanzar_profundo(profundo=False):
     if not py.exists() or not (PROF / "manifiesto.json").exists():
         print("[aviso] para instalar el modo profundo: python3.12 -I scripts/buscador/preparar_profundo.py (README.md).", file=sys.stderr)
         return 2
-    args = [x for x in sys.argv[1:] if x not in ("--profundo", "--ligero")] + ([] if profundo else ["--ligero"])  # por defecto ligero; --profundo = con vectores e5
+    args = [x for x in sys.argv[1:] if x not in ("--profundo", "--ligero", "--maximo")] + ([] if modo == "--profundo" else [modo])  # --ligero (V2 + gte), --profundo (+ vectores e5), --maximo (+ Qwen3 en los 5 mejores)
     aislar = _aislante()
     if aislar is None and not os.environ.get("BUSCADOR_PERMITIR_SIN_SANDBOX"):  # falla cerrado: por seguridad los modelos NO corren sin aislamiento de red del sistema
         print("[ALTO] no hay forma de aislar la red a nivel de sistema (sandbox-exec en macOS; unshare o bwrap en Linux): por seguridad no se corren los modelos. "
@@ -532,15 +547,23 @@ def main():
     ap.add_argument("--sin-registro", action="store_true", help="no guarda esta consulta en el registro de uso (también: BUSCADOR_SESIONES_SIN_REGISTRO=1)")
     ap.add_argument("--uso-stats", action="store_true", help="resume el registro de uso")
     ap.add_argument("--borrar-uso", action="store_true", help="borra todo el registro de uso")
-    ap.add_argument("--profundo", action="store_true", help="además de V2 + gte, vectores e5-small (más preciso en preguntas parafraseadas o vagas; ≈ 9 s por comando)")
-    ap.add_argument("--ligero", action="store_true", help="(es el valor por defecto) V2 + reordenador gte sin vectores; ≈ 7 s por comando")
-    ap.add_argument("--solo-v2", action="store_true", help="SOLO EMERGENCIAS: BM25 + prefijos sin modelos (MRR 0.467 contra 0.631 del modo profundo); nunca se usa por defecto ni como respaldo")
+    ap.add_argument("--maximo", action="store_true", help="(valor por defecto si está instalado) cascada: V2 + e5 → gte y Qwen3 sobre los 5 mejores; MRR 0.66; ≈ 7 a 12 s por comando")
+    ap.add_argument("--profundo", action="store_true", help="V2 + vectores e5-small → reordenador gte (MRR 0.63; ≈ 5 a 9 s por comando); es el modo por defecto si el Máximo no está instalado")
+    ap.add_argument("--ligero", action="store_true", help="V2 + reordenador gte sin vectores (MRR 0.60; ≈ 3 a 7 s por comando); para lo urgente")
+    ap.add_argument("--solo-v2", "--ultraligero", dest="solo_v2", action="store_true", help="ULTRA LIGERO: BM25 + prefijos sin modelos (MRR 0.47; la más rápida y la de menor precisión); no es respaldo automático: solo si se pide con la bandera o se elige como modo base")
+    ap.add_argument("--modo", nargs="?", const="?", choices=list(MODOS) + ["v2", "?"], help="elige el modo BASE (lo usa toda búsqueda sin bandera; también lo cambia el icono de la barra de menú): ultraligero, ligero, profundo o maximo; sin valor, muestra el actual")
     a = ap.parse_args()
+    if a.modo is not None:
+        if a.modo != "?": guardar_modo("ultraligero" if a.modo == "v2" else a.modo)
+        print("Modo base:", modo_base()); return
+    if not (a.ligero or a.profundo or a.maximo or a.solo_v2) and modo_base() == "ultraligero": a.solo_v2 = True
     if a.solo_v2:
         METODO = "buscar_sesiones v" + VERSION + " --solo-v2 (emergencia)"
-        print("[ALERTA] --solo-v2: resultados de menor precisión (sin modelos). Úsalo solo en emergencias.", file=sys.stderr)
+        print("[ALERTA] Ultra ligero (V2 solo, sin modelos): resultados de menor precisión.", file=sys.stderr)
     elif a.pregunta and not (a.util or a.inutil or a.uso_stats or a.borrar_uso or a.stats or os.environ.get("BUSCADOR_SESIONES_NO_LANZAR")):
-        rc = lanzar_profundo(a.profundo)
+        base = modo_base(); qwen_ok = (PROF / "modelos" / "Qwen__Qwen3-Reranker-0.6B" / "config.json").exists()
+        modo = "--ligero" if a.ligero else ("--profundo" if a.profundo else ("--maximo" if a.maximo else ("--ligero" if base == "ligero" else ("--profundo" if (base == "profundo" or not qwen_ok) else "--maximo"))))  # sin bandera: el modo base (por defecto Máximo si está instalado)
+        rc = lanzar_profundo(modo)
         if rc == 0:
             sys.exit(0)
         if rc != 2:  # el modo profundo está instalado pero falló: NO se cae a V2 solo

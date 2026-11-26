@@ -1,11 +1,13 @@
-"""Búsqueda con modelos de buscar_sesiones.py (ligero por defecto, --profundo con vectores): V2 (BM25 + prefijos) + vectores multilingual-e5-small (RRF) + reordenador gte-multilingual-reranker-base sobre los 20 mejores.
+"""Búsqueda con modelos de buscar_sesiones.py (modos ligero, profundo y máximo): V2 (BM25 + prefijos) + vectores multilingual-e5-small (RRF) + reordenador gte-multilingual-reranker-base sobre los 20 mejores; en el modo máximo, Qwen3-Reranker-0.6B reordena además los 5 mejores y se promedia con gte (puntaje z).
 Se lanza con:  python3 -I scripts/buscador/buscar_sesiones.py "<pregunta>" --profundo   (corre con el Python de ~/.memoria-local/profundo/venv, dentro de sandbox-exec sin red en macOS).
 SIN RED, TRES CAPAS: (1) archivos: modelos propios en carpeta de solo lectura, con huellas SHA-256 verificadas contra manifiesto.json; (2) código: modo sin conexión forzado
 ANTES de importar las librerías, carga solo desde rutas locales y se bloquean los sockets de red de Python; (3) sistema: sandbox-exec (deny network*) lo pone el lanzador (solo macOS)."""
-import os, socket, sys
+import logging, os, socket, sys
 
 # ---- capa de código: modo sin conexión ANTES de importar torch, transformers y sentence-transformers
-os.environ.update(HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1", HF_HUB_DISABLE_TELEMETRY="1", TOKENIZERS_PARALLELISM="false", DO_NOT_TRACK="1")
+os.environ.update(HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1", HF_HUB_DISABLE_TELEMETRY="1", TOKENIZERS_PARALLELISM="false", DO_NOT_TRACK="1", HF_HUB_DISABLE_PROGRESS_BARS="1", TRANSFORMERS_VERBOSITY="error")
+for _n in ("torch.distributed.elastic.multiprocessing.redirects", "sentence_transformers", "transformers", "huggingface_hub"):  # menos ruido en la salida (cuesta tokens): avisos y barras de carga
+    logging.getLogger(_n).setLevel(logging.ERROR)
 _connect_orig = socket.socket.connect
 
 
@@ -35,6 +37,8 @@ E5, GTE = MOD / "intfloat__multilingual-e5-small", MOD / "Alibaba-NLP__gte-multi
 VEC = Path(os.environ.get("BUSCADOR_PROFUNDO_VEC", str(PROF / "vectores.db")))
 K_CAND = 20
 LIGERO = False  # --ligero: reordenador gte sobre V2, sin vectores ni e5
+QWEN = MOD / "Qwen__Qwen3-Reranker-0.6B"; M_QWEN = 5
+MAXIMO = False  # --maximo: además, Qwen3-Reranker reordena los 5 mejores de gte (promedio z con gte); medido: MRR 0.662 contra 0.628 del profundo
 sp = importlib.util.spec_from_file_location("bs", Path(__file__).resolve().with_name("buscar_sesiones.py")); bs = importlib.util.module_from_spec(sp); sp.loader.exec_module(bs)
 ST = {}  # modelos y vectores, cargados una sola vez
 
@@ -103,10 +107,12 @@ def preparar(con):
         return ST
     import numpy as np, torch
     from sentence_transformers import CrossEncoder, SentenceTransformer
+    import transformers; transformers.utils.logging.disable_progress_bar()
     torch.set_num_threads(max(1, (os.cpu_count() or 4) // 2))
     dev = "mps" if torch.backends.mps.is_available() else "cpu"
     t0 = time.time()
     ce = CrossEncoder(str(GTE), max_length=512, device=dev, trust_remote_code=False, local_files_only=True)
+    qw = CrossEncoder(str(QWEN), max_length=512, device=dev, trust_remote_code=False, local_files_only=True) if MAXIMO else None
     filas = con.execute("SELECT id, uuid, l1, titulo, usuario, asistente, dia FROM turnos ORDER BY id").fetchall()
     e5, Ed, completo = None, None, False
     if not LIGERO:
@@ -115,8 +121,8 @@ def preparar(con):
             Ed = _vectores(con, e5, np, filas); completo = True
         except Exception as e:
             print(f"[profundo] vectores no disponibles ({type(e).__name__}: {str(e)[:90]}); sigo en modo ligero (gte sobre V2).", file=sys.stderr)
-    bs.METODO = "buscar_sesiones v" + bs.VERSION + (" --profundo (e5-small + gte-reranker, K=20)" if completo else " --ligero (gte-reranker sobre V2, K=20)")
-    ST.update(con=con, np=np, e5=e5, ce=ce, ids=[f[0] for f in filas], Ed=Ed, completo=completo, dia={f[0]: f[6] for f in filas}, arranque=time.time() - t0, dispositivo=dev)
+    bs.METODO = "buscar_sesiones v" + bs.VERSION + ((" --maximo (e5-small + gte-reranker, K=20, + Qwen3-Reranker en los 5 mejores)" if qw is not None else " --profundo (e5-small + gte-reranker, K=20)") if completo else " --ligero (gte-reranker sobre V2, K=20)")
+    ST.update(con=con, np=np, e5=e5, ce=ce, qw=qw, ids=[f[0] for f in filas], Ed=Ed, completo=completo, dia={f[0]: f[6] for f in filas}, arranque=time.time() - t0, dispositivo=dev)
     return ST
 
 
@@ -154,7 +160,12 @@ def buscar_p(con, pregunta, k=5, hoy=None, usar_fecha=True, tope_sesion=2, ocult
     if top:
         filas = {i: con.execute("SELECT titulo, usuario, asistente FROM turnos WHERE id=?", (i,)).fetchone() for i in top}
         sc = S["ce"].predict([(q, _doc(*filas[i])) for i in top], batch_size=16, show_progress_bar=False)
-        top = [i for _, i in sorted(zip(sc, top), key=lambda x: -x[0])]
+        par = sorted(zip(sc, top), key=lambda x: -x[0]); top = [i for _, i in par]
+        if S.get("qw") is not None and len(top) > 1:  # MÁXIMO: segunda etapa; Qwen3 reordena los mejores M_QWEN de gte y se promedian los puntajes (z dentro de esos M)
+            m = min(M_QWEN, len(top)); cabeza = top[:m]; g = [float(s) for s, _ in par[:m]]
+            qs = S["qw"].predict([(q, _doc(*filas[i])) for i in cabeza], batch_size=16, show_progress_bar=False)
+            z = lambda v: [(x - float(np.mean(v))) / float(np.std(v)) if float(np.std(v)) > 1e-9 else 0. for x in v]
+            top = [cabeza[j] for j in np.argsort(-np.mean([z(g), z([float(s) for s in qs])], axis=0), kind="stable")] + top[m:]
     out, vs, vistos = [], defaultdict(int), {}
     for i in top + resto:
         r = con.execute("SELECT uuid,titulo,l1,l2,ts,dia,usuario,asistente,herramientas FROM turnos WHERE id=?", (i,)).fetchone()
@@ -197,16 +208,18 @@ def probar_sin_red():
 def main():
     if "--probar-sin-red" in sys.argv:
         sys.exit(1 if probar_sin_red() else 0)
-    global LIGERO
-    LIGERO = "--ligero" in sys.argv
-    sys.argv = [sys.argv[0]] + [x for x in sys.argv[1:] if x not in ("--profundo", "--ligero")]
+    global LIGERO, MAXIMO
+    LIGERO = "--ligero" in sys.argv; MAXIMO = "--maximo" in sys.argv and not LIGERO
+    sys.argv = [sys.argv[0]] + [x for x in sys.argv[1:] if x not in ("--profundo", "--ligero", "--maximo")]
+    if MAXIMO and not (QWEN / "config.json").exists():
+        print("[aviso] el nivel Máximo no está instalado (falta Qwen3-Reranker): sigo en profundo. Para instalarlo: python3 -I scripts/buscador/preparar_maximo.py", file=sys.stderr); MAXIMO = False
     n = verificar_modelos(forzar="--verificar-modelos" in sys.argv)
     sys.argv = [x for x in sys.argv if x != "--verificar-modelos"]
     bs.buscar = buscar_p
     os.environ["BUSCADOR_SESIONES_NO_LANZAR"] = "1"  # protección 1: el main() de V2 NO vuelve a lanzar el modo profundo (esta ya es la corrida profunda: bs.buscar está reemplazada)
     bs.main()
     if ST.get("sugerir") and "--json" not in sys.argv:
-        print("→ Sugerencia: confianza baja en todos los resultados; si la pregunta es vaga o parafraseada, repite con --profundo (vectores e5, ≈ 9 s).")
+        print("→ Sugerencia: confianza baja en todos los resultados; repite con una búsqueda profunda (sin --ligero).")
 
 
 if __name__ == "__main__":

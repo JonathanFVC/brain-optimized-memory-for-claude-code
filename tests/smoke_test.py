@@ -48,7 +48,7 @@ try:
         try: return json.loads(r.stdout)["hookSpecificOutput"]["additionalContext"]
         except Exception: return ""
     t = hook("¿Qué dijimos ayer sobre el formato del reporte? No me acuerdo de lo que decidimos", 1)
-    chequeo("hook: inyecta la directiva de lo hablado, con el modo y sin la procedencia", "ligero por defecto" in t and "procedencia omitida" in t and "textual:" not in t, f"{len(t)} caracteres")
+    chequeo("hook: inyecta la directiva de lo hablado, con el modo y sin la procedencia", "modo base" in t and "procedencia omitida" in t and "textual:" not in t, f"{len(t)} caracteres")
     chequeo("hook: un mensaje sin relación no inyecta nada", hook("xyzzy plugh qwerty", 2) == "")
     # 5) índice de memoria en forma corta
     mem = Path.home() / ".claude/projects"  # no se toca: solo se prueba la función de normalización sobre un archivo temporal
