@@ -76,12 +76,12 @@ Variables de entorno: `BUSCADOR_HOME` (dónde viven índice y modelos, por defec
 | **Grafo de conocimiento** (graphify) y **RAG con grafos** | Probado sin LLM sobre ≈ 2,500 nodos: útil como mapa visual por tema, pero solo 124 de ≈ 3,200 aristas eran enlaces reales entre documentos y los enlaces documento→código eran débiles; para documentos exige un LLM (costo y privacidad). Sin evidencia de que supere a BM25 + vectores | ❌ para recuperar conversaciones |
 | **Base de datos de vectores como servicio** (Qdrant y similares) | Los vectores de ≈ 22 mil turnos ocupan ≈ 34 MB: caben en memoria con numpy | ❌ innecesaria |
 | **Solo búsqueda semántica** (e5-small, bge-m3) | 57 % y 56 % en el top 5 contra 61 % de BM25 (77 preguntas); mezclada sube a 74–77 %; bge-m3 tardó 1,027 s contra 85 s, usó 4 veces más disco y no ganó | ✅ vectores solo como complemento (e5-small) |
-| **Modelo propio pequeño** (destilación de dos reordenadores) | MRR 0.208 solo y 0.351 reordenando los 20 de V2 (V2: 0.467) | ❌ |
+| **Modelo propio pequeño** (destilación de dos reordenadores) | MRR 0.208 solo y 0.351 reordenando los 20 de V2 (V2: 0.467) | ❌ no supera a V2 (0.208 contra 0.467) |
 | **Matemática clásica entrenada con el propio texto** | 42 % sola; los pesos aprendidos llegan a 73 % pero son frágiles | ❌ queda V2 con prefijos |
-| **Afinar BM25** (27 variantes, 64 configuraciones) | Ninguna mejoró de forma significativa: el orden léxico está en su techo | ❌ |
+| **Afinar BM25** (27 variantes, 64 configuraciones) | Ninguna mejoró de forma significativa: el orden léxico está en su techo | ❌ sin mejora: el orden léxico ya está en su techo |
 | **MemPalace** | Se probaron sus dos ideas por separado: guardado automático al compactar (sin mejora: el resumen conserva 77–85 %) e índice aparte de sesiones pasadas (funciona; es la base de esta herramienta) | ✅ la idea del índice · ❌ el producto (superficie amplia de herramientas) |
 | **Servicios de memoria que envían el texto fuera** (p. ej. mem4dev, según su documentación) | Suben el texto de las conversaciones a servicios externos | ❌ incompatible con privacidad local |
-| **Plugins que graban y resumen con un LLM** (claude-mem, según su README) | Podrían capturar salidas con credenciales y mandarlas a un LLM; gastan tokens extra | ❌ |
+| **Plugins que graban y resumen con un LLM** (claude-mem, según su README) | Podrían capturar salidas con credenciales y mandarlas a un LLM; gastan tokens extra | ❌ riesgo para la privacidad y gasto extra de tokens |
 | **qmd** (BM25 + vectores + reordenador locales para notas Markdown) | El más parecido en espíritu, pero para notas en Markdown, no para las sesiones de Claude Code; modelos de ≈ 2 GB orientados al inglés | ⏸ no probado |
 | **Engram** | No se evaluó | ⏸ pendiente |
 Las evaluaciones de herramientas de terceros son de octubre y noviembre de 2026 (documentación, README y código leídos; solo graphify se ejecutó, sin LLM y sin llaves de API); pueden haber cambiado.
@@ -176,12 +176,12 @@ Environment variables: `BUSCADOR_HOME` (index/models location, default `~/.memor
 | **Knowledge graph** (graphify) and **graph RAG** | Tried without an LLM on ≈ 2,500 nodes: useful as a visual topic map, but only 124 of ≈ 3,200 edges were real links between documents and document→code links were weak; for documents it needs an LLM (cost and privacy). No evidence it beats BM25 + vectors | ❌ for recalling conversations |
 | **Vector database as a service** (Qdrant and similar) | Vectors for ≈ 22 k turns take ≈ 34 MB: they fit in memory with numpy | ❌ unnecessary |
 | **Semantic search alone** (e5-small, bge-m3) | 57 % and 56 % in the top 5 vs 61 % for BM25 (77 questions); fused it reaches 74–77 %; bge-m3 took 1,027 s vs 85 s, used 4× the disk and did not win | ✅ vectors only as a complement (e5-small) |
-| **Own small model** (distilled from two rerankers) | MRR 0.208 alone and 0.351 re-ranking V2's top 20 (V2: 0.467) | ❌ |
+| **Own small model** (distilled from two rerankers) | MRR 0.208 alone and 0.351 re-ranking V2's top 20 (V2: 0.467) | ❌ does not beat V2 (0.208 vs 0.467) |
 | **Classical math trained on your own text** | 42 % alone; learned weights reach 73 % but are fragile | ❌ V2 with prefixes stays |
-| **Tuning BM25** (27 variants, 64 configurations) | None improved significantly: lexical ranking is at its ceiling | ❌ |
+| **Tuning BM25** (27 variants, 64 configurations) | None improved significantly: lexical ranking is at its ceiling | ❌ no gain: lexical ranking is already at its ceiling |
 | **MemPalace** | Its two ideas were tested separately: auto-save on compaction (no gain: the summary keeps 77–85 %) and a separate index of past sessions (works; it is the basis of this tool) | ✅ the index idea · ❌ the product (wide tool surface) |
 | **Memory services that send text out** (e.g. mem4dev, per its documentation) | They upload conversation text to external services | ❌ incompatible with local privacy |
-| **Plugins that record and summarize with an LLM** (claude-mem, per its README) | They could capture outputs with credentials and send them to an LLM; they spend extra tokens | ❌ |
+| **Plugins that record and summarize with an LLM** (claude-mem, per its README) | They could capture outputs with credentials and send them to an LLM; they spend extra tokens | ❌ privacy risk and extra token cost |
 | **qmd** (local BM25 + vectors + reranker for Markdown notes) | The closest in spirit, but for Markdown notes, not Claude Code session logs; ≈ 2 GB English-oriented models | ⏸ not tested |
 | **Engram** | Not evaluated | ⏸ pending |
 Third-party tool evaluations are from October–November 2026 (documentation, README and code read; only graphify was run, without an LLM or API keys); they may have changed.
