@@ -35,7 +35,7 @@ Variables de entorno: `BUSCADOR_HOME` (dónde viven índice y modelos, por defec
 
 ## Por qué esta opción (comparativas)
 
-![Comparativas: los tres modos, modelos sin V2, el camino y las alternativas](docs/img/comparativa.png)
+![Comparativas: los tres modos, modelos sin V2, el camino y las alternativas](docs/img/comparativa-es.png)
 
 > **Una persona, un historial:** las cifras son orientación, no garantía. Mide con tus propias preguntas (`scripts/buscador/evaluacion/evaluar_metodos.py`). Todo el detalle está en [`docs/resultados.md`](docs/resultados.md). **MRR** = qué tan arriba queda la respuesta correcta (1 = siempre primera).
 
@@ -135,7 +135,7 @@ Environment variables: `BUSCADOR_HOME` (index/models location, default `~/.memor
 
 ## Why this option (comparisons)
 
-![Comparisons: the three modes, models without V2, the path and the alternatives](docs/img/comparativa.png)
+![Comparisons: the three modes, models without V2, the path and the alternatives](docs/img/comparativa-en.png)
 
 > **One person, one history:** numbers are guidance, not a guarantee. Measure with your own questions (`scripts/buscador/evaluacion/evaluar_metodos.py`). Full detail in [`docs/resultados.md`](docs/resultados.md) (Spanish). **MRR** = how high the correct answer ranks (1 = always first).
 
