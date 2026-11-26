@@ -33,3 +33,14 @@ Se probó una «bolsa de raíces» (vectores de palabras iniciados con e5 más u
 - **Los números de línea de las directivas se mueven** al agregar una: en las pruebas, resuélvelos por el texto.
 - **«hoy» no debe tapar otra fecha** («el mes pasado hablamos de X, ¿cómo lo cambiaría hoy?»).
 - **Pega consultas cortas y específicas** al buscador; con el mensaje completo se diluye el ranking.
+
+## Comparativas: conjuntos de preguntas y cómo leerlas
+Las cifras de la imagen y del README salen de **conjuntos distintos** y no se pueden mezclar:
+- **183 preguntas** (92 + 54 difíciles + 37 nuevas): comparativas finales (modos, modelos sin V2, reordenadores).
+- **92 preguntas** (documentadas y no documentadas): «el camino» (de la búsqueda solo en carpeta hasta el reordenador). Clasificación objetiva: *documentada* = el ancla de la respuesta aparece en documentos o memorias (57); *no documentada* = no aparece (35), por eso la búsqueda en carpeta saca 0 % ahí **por construcción**.
+- **77 preguntas** (48 independientes + 29 de calibración): vectores solos contra BM25 y afinación de BM25.
+- **48 preguntas independientes** (redactadas por un subagente a partir de turnos aleatorios, anclas validadas): búsqueda en carpeta 19 % contra índice de sesiones 54 %.
+Sesgos a tener presentes: las preguntas las redactaron modelos y no la persona; la respuesta siempre existe en el índice de sesiones (los métodos de sesiones parten con ventaja sobre la búsqueda en carpeta); las cifras con pocas preguntas tienen intervalos amplios; las evaluaciones de herramientas de terceros son de octubre y noviembre de 2026 y se hicieron leyendo documentación, README y código (solo graphify se ejecutó, sin LLM y sin llaves de API).
+
+## Alternativas consideradas (resumen; la tabla completa está en el README)
+Graph y RAG con grafos (graphify; no para recuperar conversaciones), servicio de vectores (Qdrant; innecesario: ≈ 22 mil vectores = ≈ 34 MB), solo semántico (e5-small 57 % y bge-m3 56 % contra BM25 61 %), modelo propio pequeño (MRR 0.208), matemática clásica entrenada (42 % sola), afinar BM25 (27 variantes y 64 configuraciones sin mejora), MemPalace (sus dos ideas probadas por separado: el índice de sesiones sí, el guardado al compactar no), servicios que envían texto fuera (mem4dev), plugins que resumen con un LLM (claude-mem), qmd (no probado) y Engram (no evaluado).
