@@ -16,10 +16,12 @@ Búsqueda 100 % local en tus **conversaciones pasadas de Claude Code**, más un 
 - **`scripts/directivas-buscador/`**: un hook que en cada mensaje inyecta solo las directivas y memorias más afines, para no cargar un archivo de reglas largo cada vez.
 - **`.context/`, `plantillas/`**: directivas de ejemplo, palabras de disparo, `CLAUDE.md`, configuración de hooks y memorias (todo ficticio; reemplázalo por lo tuyo).
 - **`skills/`**: tres skills reutilizables: `buscar-conversaciones`, `trazabilidad`, `actualizar-directivas`.
-- **`docs/`**: arquitectura, directivas y memoria, seguridad y privacidad, resultados y lecciones.
+- **`docs/`**: manual de instalación, arquitectura, directivas y memoria, seguridad y privacidad, resultados y lecciones.
 
 ## Inicio rápido
-Requiere Python ≥ 3.12 (se recomienda macOS; la capa de sistema contra la red usa `sandbox-exec`).
+> 💡 **Pídele a tu Claude que te ayude con la instalación.** Abre Claude Code en tu proyecto y pega este mensaje: «*Lee README.md y docs/instalacion.md de este repositorio y ayúdame a instalar la búsqueda local de conversaciones en mi proyecto. Antes de ejecutar nada, dime qué vas a hacer; pídeme confirmación antes del único paso con red (preparar_profundo.py). No modifiques mi CLAUDE.md ni mi .claude/settings.json sin mostrarme el cambio, y no subas nada a internet. Al terminar corre verificar_aislamiento.py y tests/smoke_test.py.*». El **manual completo paso a paso** (requisitos, instalación, verificación, problemas frecuentes y desinstalar) está en [`docs/instalacion.md`](docs/instalacion.md).
+
+Requiere Python ≥ 3.12. **macOS: probado** (la capa de sistema contra la red usa `sandbox-exec`) · **Linux: no probado** · **Windows: no compatible tal cual** (solo modo `--solo-v2`, o WSL2 sin probar). Detalle en [`docs/instalacion.md`](docs/instalacion.md).
 ```bash
 # 1) opcional, una vez (con red): instalar el entorno aislado y los dos modelos; al terminar se sella solo contra internet
 python3 -I scripts/buscador/preparar_profundo.py
@@ -116,10 +118,12 @@ MIT. Los modelos de terceros conservan sus licencias (MIT, Apache-2.0).
 - **`scripts/directivas-buscador/`** – a hook that, on every message, injects only the directives and memories most relevant to it, so a long rules file does not have to be loaded every time.
 - **`.context/`, `plantillas/`** – example directives, trigger words, `CLAUDE.md`, hook settings and memory files (all fictional examples; replace them with yours).
 - **`skills/`** – three reusable skills: `buscar-conversaciones`, `trazabilidad`, `actualizar-directivas`.
-- **`docs/`** – architecture, directives and memory, security and privacy, results and lessons (Spanish).
+- **`docs/`** – installation manual (Spanish and English), architecture, directives and memory, security and privacy, results and lessons (Spanish).
 
 ## Quick start
-Requires Python ≥ 3.12 (macOS recommended; the network sandbox layer uses `sandbox-exec`).
+> 💡 **Ask your Claude to help you install it.** Open Claude Code in your project and paste this message: "*Read README.md and docs/instalacion.md in this repository and help me install the local conversation search in my project. Before running anything, tell me what you are going to do; ask me for confirmation before the only step that uses the network (preparar_profundo.py). Do not modify my CLAUDE.md or my .claude/settings.json without showing me the change, and do not upload anything to the internet. When finished, run verificar_aislamiento.py and tests/smoke_test.py.*". The **full step-by-step manual** (requirements, install, verification, common problems and uninstall) is in [`docs/instalacion.md`](docs/instalacion.md) (Spanish first, English below).
+
+Requires Python ≥ 3.12. **macOS: tested** (the system network layer uses `sandbox-exec`) · **Linux: untested** · **Windows: not supported as is** (`--solo-v2` mode only, or WSL2, untested). Details in [`docs/instalacion.md`](docs/instalacion.md).
 ```bash
 # 1) optional, once (needs network): install the isolated environment and the two models; it seals itself from the internet when it finishes
 python3 -I scripts/buscador/preparar_profundo.py
