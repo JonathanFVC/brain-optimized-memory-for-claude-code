@@ -17,6 +17,9 @@ Usa esta skill cuando la pregunta es sobre **lo hablado y no documentado** («¿
 4. **Lee el resultado como un mapa:** abre el rango citado (`uuid:línea` en el `.jsonl`), confirma, mira la fecha (puede haber decisiones superadas) y verifica el estado vivo.
 5. **Marca el uso:** `--util N` si el fragmento sirvió, `--inutil N` si no (registro local; `--uso-stats` lo resume).
 
+## Con la carpeta del proyecto y el enrutador (`buscar_todo.py`)
+Para **tareas nuevas**, tickets pegados y preguntas que pueden estar en archivos o en conversaciones, usa en su lugar `python3 -I scripts/buscador/buscar_todo.py "<mensaje>" --auto --excluir <uuid actual>`: el enrutador decide si buscar, en qué fuente (V1 carpeta, V2 conversaciones o las dos) y cuántos resultados, según `docs/criterio-busqueda.md`. Al cerrar la tarea corre `buscar_todo.py --marca v1|v2|ambas|ninguna <tarea>` y deja en una línea «🔎 Búsqueda: <fuente> → aportó <marca>». `--explica` solo muestra la decisión.
+
 ## Límites
 - Solo busca en las sesiones del proyecto actual (otra carpeta con `--sesiones`).
 - El índice guarda todo sin enmascarar: es una copia sensible; `--ocultar` solo enmascara al mostrar.

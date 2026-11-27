@@ -11,6 +11,8 @@
 - **`verificar_aislamiento.py`:** comprueba cuando quieras que la instalación sigue aislada (marca de instalación, entorno sin red, modelos sin código, huellas SHA-256 y aislamiento del sistema).
 - **Registro de uso local:** `--util N` / `--inutil N` marcan si un fragmento sirvió; `--uso-stats` resume. Sirve para medir con uso real qué modo conviene.
 
+- **V1 y «buscar todo» (`buscar.py`, `buscar_carpeta_profundo.py`, `buscar_todo.py`, `buscar_todo_modelos.py`, `enrutar_busqueda.py`):** V1 indexa la carpeta del proyecto (SQLite FTS5, BM25, capa curada opcional y prioridades por tipo de archivo). Su modo Profundo fusiona (RRF) ese ranking con `multilingual-e5-small` y `gte-multilingual-reranker-base` sobre los 50 mejores; los vectores de los trozos viven en `~/.memoria-local/profundo/vectores_carpeta.db` y se actualizan solos. `buscar_todo.py` corre V1 y V2 en un solo arranque (modelos compartidos, dentro de `sandbox-exec`, sin red) y con `--auto` el enrutador decide si buscar, dónde y cuántos resultados; todo se explica en `docs/criterio-busqueda.md`. Registro local: solo señales en `uso/`, informe cada 25 mensajes.
+
 ## Cadena de respaldo
 máximo → (si falta Qwen3) profundo → (si fallan los vectores) ligero → (si el modo está instalado pero falla) error, **sin** devolver resultados de menor precisión. V2 solo (modo ultra ligero) existe como `--ultraligero` / `--solo-v2`, si el usuario lo elige como modo base (con alerta) o cuando el modo con modelos no está instalado (con alerta).
 

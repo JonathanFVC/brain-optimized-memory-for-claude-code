@@ -39,6 +39,18 @@ Al terminar corre scripts/buscador/verificar_aislamiento.py y tests/smoke_test.p
 8. **Reinicia Claude Code** para que cargue los hooks nuevos.
 9. **(Opcional) Elige el modo base:** `python3.12 -I scripts/buscador/buscar_sesiones.py --modo ligero` (valores: `ultraligero`, `ligero`, `profundo`, `maximo`; sin valor muestra el actual). En macOS, un icono en la barra de menú hace lo mismo: `scripts/modo-barra-de-menu/construir.sh` y `open ~/.memoria-local/app/"Modo de busqueda.app"`; para que arranque al iniciar sesión, `scripts/modo-barra-de-menu/inicio-automatico.sh instalar`.
 
+## 3 bis. Carpetas (qué hay que tener y qué se crea solo)
+No hay carpetas nuevas obligatorias: la búsqueda de la carpeta (V1) funciona sobre **cualquier** carpeta de proyecto. Lo único que copias es lo del paso 2.
+| Dónde | Qué es | ¿Hay que crearla? |
+|---|---|---|
+| `scripts/buscador/` y `scripts/directivas-buscador/` (en tu proyecto) | El código (V1, V2, `buscar_todo.py`, enrutador, hook) | Se copia en el paso 2 |
+| `.context/` (en tu proyecto) | Directivas y palabras de disparo para el hook | Solo si usas directivas |
+| `~/.memoria-local/` (o `BUSCADOR_HOME`) | **Fuera del proyecto**, carpeta privada (700): `sesiones.db` y `index.db` (índices), `profundo/` (entorno, modelos, vectores de conversaciones y de la carpeta), `uso/` (registro local y `informe_criterios.md`), `directivas-estado/` | **No**: se crea sola al buscar o al instalar |
+| `docs/` (en tu proyecto) | Tus notas en Markdown. Opcional: una línea `> **Resumen:** …` bajo el título sube el documento en el ranking y se muestra con el resultado | Opcional |
+| `.context/indice.md` | Índice curado opcional (plantilla: `plantillas/indice.ejemplo.md`) | Opcional |
+| `.context/buscador-alias.tsv` | Sinónimos propios opcionales: `término<TAB>equivalente` por línea | Opcional |
+La primera búsqueda con `buscar_todo.py` indexa tu carpeta y vectoriza sus trozos (≈ 2–3 min por cada 28,000 trozos y ≈ 60 MB en `~/.memoria-local/profundo/vectores_carpeta.db`, una sola vez; después solo lo nuevo o cambiado). Requiere los modelos de los pasos 5 y 6; sin ellos usa `buscar.py` (BM25) directamente: `python3.12 -I scripts/buscador/buscar.py "<pregunta>"`.
+
 ## 4. Variables de entorno (opcionales)
 `BUSCADOR_HOME` (dónde viven índice y modelos; por defecto `~/.memoria-local`) · `CLAUDE_PROJECT_DIR` (proyecto cuyas sesiones se buscan) · `BUSCADOR_ZONA` (zona horaria, p. ej. `America/Bogota`) · `BUSCADOR_SIGLAS` (siglas de 2 letras que cuentan como palabra) · `BUSCADOR_PERMITIR_SIN_SANDBOX=1` (solo si no hay aislamiento del sistema; menos seguro).
 
@@ -98,6 +110,18 @@ When finished, run scripts/buscador/verificar_aislamiento.py and tests/smoke_tes
 7. **First search:** `python3.12 -I scripts/buscador/buscar_sesiones.py "something you talked about" --excluir <current session uuid>`. The first time it indexes your sessions (a few seconds) and, in deep mode, builds vectors (≈ 40 s per 6,000 turns).
 8. **Restart Claude Code** so it loads the new hooks.
 9. **(Optional) Pick the base mode:** `python3.12 -I scripts/buscador/buscar_sesiones.py --modo ligero` (values: `ultraligero`, `ligero`, `profundo`, `maximo`; with no value it shows the current one). On macOS a menu-bar icon does the same: `scripts/modo-barra-de-menu/construir.sh` and `open ~/.memoria-local/app/"Modo de busqueda.app"`; to start it at login, `scripts/modo-barra-de-menu/inicio-automatico.sh instalar`.
+
+## 3 bis. Folders (what you need and what is created by itself)
+No new folder is mandatory: folder search (V1) works on **any** project folder. All you copy is what step 2 says.
+| Where | What it is | Do I create it? |
+|---|---|---|
+| `scripts/buscador/` and `scripts/directivas-buscador/` (in your project) | The code (V1, V2, `buscar_todo.py`, router, hook) | Copied in step 2 |
+| `.context/` (in your project) | Directives and trigger words for the hook | Only if you use directives |
+| `~/.memoria-local/` (or `BUSCADOR_HOME`) | **Outside the project**, private folder (700): `sesiones.db` and `index.db` (indexes), `profundo/` (environment, models, conversation and folder vectors), `uso/` (local log and `informe_criterios.md`), `directivas-estado/` | **No**: it is created by itself when you search or install |
+| `docs/` (in your project) | Your Markdown notes. Optional: a `> **Resumen:** …` line under the title raises the document in the ranking and is shown with the result | Optional |
+| `.context/indice.md` | Optional curated index (template: `plantillas/indice.ejemplo.md`) | Optional |
+| `.context/buscador-alias.tsv` | Optional own synonyms: `term<TAB>equivalent` per line | Optional |
+The first `buscar_todo.py` search indexes your folder and vectorizes its chunks (≈ 2–3 min per 28,000 chunks and ≈ 60 MB in `~/.memoria-local/profundo/vectores_carpeta.db`, once; afterwards only what is new or changed). It needs the models from steps 5 and 6; without them use `buscar.py` (BM25) directly: `python3.12 -I scripts/buscador/buscar.py "<question>"`.
 
 ## 4. Environment variables (optional)
 `BUSCADOR_HOME` (where the index and models live; default `~/.memoria-local`) · `CLAUDE_PROJECT_DIR` (project whose sessions are searched) · `BUSCADOR_ZONA` (time zone, e.g. `America/Bogota`) · `BUSCADOR_SIGLAS` (two-letter acronyms that count as words) · `BUSCADOR_PERMITIR_SIN_SANDBOX=1` (only if there is no system isolation; less safe).

@@ -13,6 +13,7 @@ Búsqueda 100 % local en tus **conversaciones pasadas de Claude Code**, más un 
 
 ## Qué incluye
 - **`scripts/buscador/`**: búsqueda de conversaciones con **cuatro modos**: **Ultra ligero** (V2: BM25 sobre palabras y prefijos de 5 letras + fusión RRF + fechas en español, SQLite FTS5, solo biblioteca estándar de Python, sin modelos), **Ligero** (candidatos de V2 reordenados por `gte-multilingual-reranker-base`), **Profundo** (suma vectores de `multilingual-e5-small`) y **Máximo** (además, `Qwen3-Reranker-0.6B` reordena los 5 mejores; es el modo por defecto cuando está instalado). El modo base se elige con `--modo` o con un **icono en la barra de menú (macOS)**; una bandera explícita (`--ligero` para lo urgente) manda sobre él. Los modos con modelos corren sin red, en un entorno aislado, con modelos de solo lectura y verificados por huella. **Al terminar la instalación el entorno queda sellado automáticamente: ni usando su Python directamente puede salir a internet** (compruébalo cuando quieras con `scripts/buscador/verificar_aislamiento.py`).
+- **`scripts/buscador/buscar_todo.py` (V1 + V2)**: busca a la vez en los **archivos del proyecto** (V1, con modo Profundo) y en las **conversaciones** (V2); el enrutador `--auto` decide si buscar, dónde y cuántos resultados, y un registro local (solo señales) ayuda a afinar el criterio con tu uso real.
 - **`scripts/directivas-buscador/`**: un hook que en cada mensaje inyecta solo las directivas y memorias más afines, para no cargar un archivo de reglas largo cada vez.
 - **`.context/`, `plantillas/`**: directivas de ejemplo, palabras de disparo, `CLAUDE.md`, configuración de hooks y memorias (todo ficticio; reemplázalo por lo tuyo).
 - **`skills/`**: tres skills reutilizables: `buscar-conversaciones`, `trazabilidad`, `actualizar-directivas`.
@@ -40,6 +41,20 @@ Sin los modelos instalados, el buscador avisa y usa V2 (Ultra ligero).
 Para usar las directivas y el hook en tu proyecto: copia `scripts/`, `.context/` y `plantillas/CLAUDE.md` (como `CLAUDE.md`), mezcla `plantillas/settings.json` en `.claude/settings.json`, copia `skills/*` a `.claude/skills/` y escribe tus directivas con el formato descrito al inicio de `.context/directivas.md`. Luego corre `python3 -I scripts/directivas-buscador/directivas_buscador.py mapa`.
 
 Variables de entorno: `BUSCADOR_HOME` (dónde viven índice y modelos, por defecto `~/.memoria-local`), `CLAUDE_PROJECT_DIR`, `BUSCADOR_ZONA` (zona horaria), `BUSCADOR_SIGLAS` (siglas de 2 letras que cuentan como palabra).
+
+## Buscar en todo: carpeta (V1) y conversaciones (V2)
+Además de las conversaciones, puedes buscar **en los archivos de tu proyecto** (notas, documentos, scripts, trazabilidad). **V1** es un índice SQLite FTS5 (BM25) de la carpeta; su **modo Profundo** mezcla (RRF) ese ranking con `multilingual-e5-small` y `gte-multilingual-reranker-base`, **los mismos modelos que ya instalas** (sin descargas nuevas). Un solo comando busca en las dos fuentes y comparte los modelos:
+```bash
+python3 -I scripts/buscador/buscar_todo.py "<mensaje>" --auto --excluir <uuid de la sesión actual>   # decide solo si buscar, dónde y cuántos resultados
+python3 -I scripts/buscador/buscar_todo.py "<mensaje>" --explica                                   # solo muestra la decisión, sin buscar
+python3 -I scripts/buscador/buscar_todo.py --marca v1|v2|ambas|ninguna <tarea>                      # al cerrar una tarea: qué fuente aportó (registro local)
+python3 -I scripts/buscador/buscar_todo.py --informe                                               # resumen local de uso para afinar el criterio
+```
+- **Enrutador (`--auto`)**: decide con señales del mensaje, sin modelos y sin red: saludos, pedidos genéricos y seguimientos cortos **no buscan**; «¿qué decidimos…?», verbos de pasado y fechas van a **conversaciones**; «¿dónde está…?» y «¿en qué archivo…?» van a la **carpeta**; un ticket, una URL o una tarea sin señal clara van a **las dos**; «YA», «apúrate» o «urgente» activan el modo rápido. Un **ticket pegado** completo se busca por su ID y título, y su cuerpo no cambia la decisión. Todas las reglas, el orden y los costos: [`docs/criterio-busqueda.md`](docs/criterio-busqueda.md).
+- **Medido por el autor** (su carpeta y su historial; son orientación, mide con lo tuyo): carpeta, primer lugar **82 % → 96 %** y MRR **0.898 → 0.973** en 51 preguntas (BM25 solo → Profundo); enrutador **96–100 %** por grupo en 288 mensajes (92 con los que se afinó, 91 de control); costo medio **≈ 770 tokens por mensaje frente a ≈ 1,040** si siempre se buscara en las dos (−26 %: casi todo el ahorro viene de no buscar en saludos, pedidos genéricos y seguimientos; en tareas es de ≈ 5–10 %).
+- **Tiempos:** la primera vez vectoriza la carpeta (≈ 2–3 min por cada 28,000 trozos, ≈ 60 MB, una sola vez; después solo lo nuevo o cambiado); luego ≈ 8–10 s por búsqueda (≈ 5 s en modo urgente).
+- **Registro local en segundo plano:** cada búsqueda con `--auto` guarda en `~/.memoria-local/uso/` solo señales (decisión, fuente, tamaño, identificadores de lo mostrado), **nunca el texto de tus mensajes ni de tus conversaciones**; con `--marca` anotas qué fuente sirvió y cada 25 mensajes se genera solo un informe (`informe_criterios.md`) para ajustar las reglas con tu uso real. `--borrar-uso-enrutador` lo elimina.
+- **¿Qué carpetas necesito?** Ninguna nueva: V1 funciona sobre cualquier carpeta. Opcional: `docs/` con una línea `> **Resumen:** …` bajo el título, y un `.context/indice.md` (plantilla en `plantillas/indice.ejemplo.md`) mejoran el orden. Detalle en [`docs/instalacion.md`](docs/instalacion.md) › «Carpetas».
 
 ## Elegir el modo
 El **modo base** lo usa toda búsqueda sin bandera. Se cambia con `--modo` (en cualquier sistema) o con un **icono en la barra de menú de macOS**:
@@ -135,7 +150,7 @@ Las evaluaciones de herramientas de terceros son de octubre y noviembre de 2026 
 El índice guarda **todo lo que escribiste, sin enmascarar** (contraseñas incluidas si las pegaste). Mantén `~/.memoria-local` privado y no lo publiques. Los modelos son abiertos (MIT y Apache-2.0), con commit fijado, huella verificada y de solo lectura; las búsquedas corren con la red bloqueada en tres capas (archivos, código, sistema). Los límites se describen con honestidad en `docs/seguridad-y-privacidad.md`.
 
 ## Pruebas
-`python3 -I tests/smoke_test.py` arma un proyecto y sesiones sintéticas en una carpeta temporal y comprueba el analizador de fechas, la búsqueda, el mapa de directivas y el hook. `python3 -I tests/test_modo.py` comprueba la elección del modo base (archivo, `--modo` y banderas). Nunca tocan tu índice real.
+`python3 -I tests/smoke_test.py` arma un proyecto y sesiones sintéticas en una carpeta temporal y comprueba el analizador de fechas, la búsqueda (V1 y V2), el enrutador, el mapa de directivas y el hook. `python3 -I tests/test_enrutador.py` prueba solo el enrutador, y `python3 -I tests/test_buscar_todo.py` hace la prueba de punta a punta con modelos (se omite si no están instalados). `python3 -I tests/test_modo.py` comprueba la elección del modo base (archivo, `--modo` y banderas). Nunca tocan tu índice real.
 
 ## Licencia
 MIT. Los modelos de terceros conservan sus licencias (MIT, Apache-2.0).
@@ -151,6 +166,7 @@ MIT. Los modelos de terceros conservan sus licencias (MIT, Apache-2.0).
 
 ## What is inside
 - **`scripts/buscador/`** – conversation search with **four modes**: **Ultra-light** (V2: BM25 over words and 5-letter prefixes + RRF fusion + Spanish date filters, SQLite FTS5, Python standard library only, no models), **Light** (V2 candidates re-ranked by `gte-multilingual-reranker-base`), **Deep** (also adds `multilingual-e5-small` vectors) and **Max** (additionally `Qwen3-Reranker-0.6B` re-ranks the top 5; it is the default when installed). The base mode is chosen with `--modo` or with a **menu-bar icon (macOS)**; an explicit flag (`--ligero` for urgent things) wins over it. The model modes run offline in an isolated environment, with read-only, hash-verified models. **When the install finishes, the environment is sealed automatically: even running its Python directly cannot reach the internet** (verify any time with `scripts/buscador/verificar_aislamiento.py`).
+- **`scripts/buscador/buscar_todo.py` (V1 + V2)** – searches **project files** (V1, with a Deep mode) and **conversations** (V2) at once; the `--auto` router decides whether to search, where and how many results, and a local log (signals only) helps tune the criterion with your real usage.
 - **`scripts/directivas-buscador/`** – a hook that, on every message, injects only the directives and memories most relevant to it, so a long rules file does not have to be loaded every time.
 - **`.context/`, `plantillas/`** – example directives, trigger words, `CLAUDE.md`, hook settings and memory files (all fictional examples; replace them with yours).
 - **`skills/`** – three reusable skills: `buscar-conversaciones`, `trazabilidad`, `actualizar-directivas`.
@@ -178,6 +194,20 @@ Without the models installed, the search warns and uses V2 (Ultra-light).
 To use the directives and hook in your own project: copy `scripts/`, `.context/` and `plantillas/CLAUDE.md` (as `CLAUDE.md`) into it, merge `plantillas/settings.json` into `.claude/settings.json`, copy `skills/*` to `.claude/skills/`, and write your own directives following the format described at the top of `.context/directivas.md`. Then run `python3 -I scripts/directivas-buscador/directivas_buscador.py mapa`.
 
 Environment variables: `BUSCADOR_HOME` (index/models location, default `~/.memoria-local`), `CLAUDE_PROJECT_DIR`, `BUSCADOR_ZONA` (time zone), `BUSCADOR_SIGLAS` (two-letter acronyms that count as words).
+
+## Search everything: folder (V1) and conversations (V2)
+Besides conversations, you can search **your project files** (notes, documents, scripts, traceability). **V1** is a SQLite FTS5 (BM25) index of the folder; its **Deep mode** fuses (RRF) that ranking with `multilingual-e5-small` and `gte-multilingual-reranker-base`, **the same models you already install** (no new downloads). One command searches both sources and shares the models:
+```bash
+python3 -I scripts/buscador/buscar_todo.py "<message>" --auto --excluir <uuid of the current session>   # decides whether to search, where and how many results
+python3 -I scripts/buscador/buscar_todo.py "<message>" --explica                                       # shows the decision only, no search
+python3 -I scripts/buscador/buscar_todo.py --marca v1|v2|ambas|ninguna <task>                          # when closing a task: which source helped (local log)
+python3 -I scripts/buscador/buscar_todo.py --informe                                                   # local usage summary to tune the criterion
+```
+- **Router (`--auto`)**: decides from signals in the message, with no models and no network: greetings, generic requests and short follow-ups **do not search**; "what did we decide…?", past-tense verbs and dates go to **conversations**; "where is…?" and "which file…?" go to the **folder**; a ticket, a URL or a task with no clear signal go to **both**; "NOW", "hurry" or "urgent" turn on fast mode. A **pasted ticket** is searched by its ID and title, and its body does not change the decision. All rules, order and costs: [`docs/criterio-busqueda.md`](docs/criterio-busqueda.md).
+- **Measured by the author** (their folder and history; guidance only, measure with your own): folder, first place **82 % → 96 %** and MRR **0.898 → 0.973** on 51 questions (BM25 alone → Deep); router **96–100 %** per group on 288 messages (92 used for tuning, 91 held out); average cost **≈ 770 tokens per message versus ≈ 1,040** if both sources were always searched (−26 %: nearly all the saving comes from not searching on greetings, generic requests and follow-ups; on tasks it is ≈ 5–10 %).
+- **Timing:** the first run vectorizes the folder (≈ 2–3 min per 28,000 chunks, ≈ 60 MB, once; afterwards only what is new or changed); then ≈ 8–10 s per search (≈ 5 s in urgent mode).
+- **Local background log:** each `--auto` search stores in `~/.memoria-local/uso/` only signals (decision, source, size, identifiers of what was shown), **never the text of your messages or conversations**; with `--marca` you note which source helped and every 25 messages a report (`informe_criterios.md`) is generated by itself so you can tune the rules with your real usage. `--borrar-uso-enrutador` deletes it.
+- **Which folders do I need?** No new ones: V1 works on any folder. Optional: `docs/` with a `> **Resumen:** …` line under the title, and a `.context/indice.md` (template in `plantillas/indice.ejemplo.md`) improve the ordering. Details in [`docs/instalacion.md`](docs/instalacion.md) › "Folders".
 
 ## Choosing the mode
 The **base mode** is used by every search without a flag. Change it with `--modo` (any system) or with a **macOS menu-bar icon**:
@@ -273,7 +303,7 @@ Third-party tool evaluations are from October–November 2026 (documentation, RE
 The index stores **everything you typed, unmasked** (passwords included if you pasted them). Keep `~/.memoria-local` private; never publish it. Models are open (MIT and Apache-2.0), pinned to a commit, hash-verified and read-only; searches run with network blocked in three layers (files, code, system). Limits are described honestly in `docs/seguridad-y-privacidad.md`.
 
 ## Tests
-`python3 -I tests/smoke_test.py` builds a throw-away project and synthetic sessions in a temp folder and checks the date parser, search, directive map and hook. `python3 -I tests/test_modo.py` checks how the base mode is chosen (file, `--modo` and flags). Neither touches your real index.
+`python3 -I tests/smoke_test.py` builds a throw-away project and synthetic sessions in a temp folder and checks the date parser, search (V1 and V2), the router, the directive map and the hook. `python3 -I tests/test_enrutador.py` tests only the router, and `python3 -I tests/test_buscar_todo.py` runs the end-to-end test with models (skipped if they are not installed). `python3 -I tests/test_modo.py` checks how the base mode is chosen (file, `--modo` and flags). Neither touches your real index.
 
 ## License
 MIT. Third-party models keep their own licenses (MIT, Apache-2.0).

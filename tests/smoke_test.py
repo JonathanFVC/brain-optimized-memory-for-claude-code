@@ -20,7 +20,7 @@ def sesion(carpeta, uuid, turnos):
 
 
 try:
-    proyecto = TMP / "proyecto"; shutil.copytree(REPO / "scripts", proyecto / "scripts", ignore=shutil.ignore_patterns("__pycache__")); shutil.copytree(REPO / ".context", proyecto / ".context")
+    proyecto = TMP / "proyecto"; shutil.copytree(REPO / "scripts", proyecto / "scripts", ignore=shutil.ignore_patterns("__pycache__")); shutil.copytree(REPO / "tests", proyecto / "tests", ignore=shutil.ignore_patterns("__pycache__")); shutil.copytree(REPO / ".context", proyecto / ".context")
     ses = TMP / "sesiones"; ses.mkdir()
     sesion(ses, "aaaaaaaa-1111-4111-8111-111111111111", [("2026-01-10T15:00:00Z", "¿Cómo configuramos el entorno de pruebas del reporte semanal?", "Usamos una variable REPORTE_ENTORNO=pruebas y una base de datos de ejemplo separada.")])
     sesion(ses, "bbbbbbbb-2222-4222-8222-222222222222", [("2026-01-12T16:00:00Z", "Decidimos el formato del reporte semanal: tabla con tres columnas.", "Perfecto: columnas fecha, métrica y valor; se envía los lunes.")])
@@ -38,6 +38,13 @@ try:
     j = buscar("el 10 de enero reporte semanal"); chequeo("búsqueda: el filtro de fecha deja solo el 10 de enero", [x["sesion"] for x in j["resultados"]] == ["aaaaaaaa"], str([x["sesion"] for x in j["resultados"]]))
     j = buscar("reporte semanal", "--excluir", "bbbbbbbb"); chequeo("búsqueda: --excluir quita una sesión", "bbbbbbbb" not in [x["sesion"] for x in j["resultados"]])
     j = buscar("pan masa madre"); chequeo("búsqueda: otra sesión distinta se encuentra por su tema", [x["sesion"] for x in j["resultados"]][:1] == ["cccccccc"])
+    # 2b) V1: búsqueda en la carpeta del proyecto (sin modelos)
+    (proyecto / "docs").mkdir(exist_ok=True); (proyecto / "docs/exportacion.md").write_text("# Exportación mensual\n\nLa exportación mensual genera un CSV con separador punto y coma y codificación UTF-8.\n", encoding="utf-8")
+    (proyecto / "docs/receta.md").write_text("# Receta de pan\n\nFermentar doce horas en frío.\n", encoding="utf-8")
+    r = subprocess.run([PY, "-I", str(proyecto / "scripts/buscador/buscar.py"), "formato de la exportación mensual", "--raiz", str(proyecto), "--db", str(TMP / "home/index.db"), "--rutas", "-k", "3"], capture_output=True, text=True, env=env)
+    chequeo("V1: encuentra el documento de la carpeta por su tema", "docs/exportacion.md" in r.stdout.splitlines()[0] if r.stdout.strip() else False, r.stdout.strip()[:80] or r.stderr[-120:])
+    # 2c) enrutador (sin modelos)
+    r = subprocess.run([PY, "-I", str(proyecto / "tests/test_enrutador.py")], capture_output=True, text=True, env=env); chequeo("enrutador: decisiones esperadas con mensajes ficticios", r.returncode == 0, r.stdout.strip().splitlines()[-1] if r.stdout.strip() else r.stderr[-120:])
     # 3) mapa de directivas
     D = [PY, "-I", str(proyecto / "scripts/directivas-buscador/directivas_buscador.py")]
     r = subprocess.run(D + ["mapa"], capture_output=True, text=True, env=env); mapa = (proyecto / ".context/directivas-mapa.md").read_text(encoding="utf-8") if (proyecto / ".context/directivas-mapa.md").exists() else ""
