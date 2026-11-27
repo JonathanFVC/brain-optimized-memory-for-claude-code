@@ -36,7 +36,7 @@ Términos distintivos, no el mensaje entero: el ID o enlace del ticket, el archi
 **Escalada:** resultado de confianza baja → una reformulación; si persiste y se buscó una sola fuente, se añade la otra; no más.
 **Regla de ahorro:** una sola fuente cuando la señal es clara (≈ −50 % de tokens), ambas solo cuando no lo es; 2 resultados en vez de 3 cuando lo buscado es exacto (≈ −30 %); solo rutas cuando basta con ubicar el archivo (≈ −68 %).
 
-## 5 bis. Criterios funcionales implementados (enrutador `enrutar_busqueda.py`) _(2026-11-26 19:40)_
+## 5 bis. Criterios funcionales implementados (enrutador `enrutar_busqueda.py`) _(2026-11-26 19:05)_
 El enrutador aplica estas señales **en este orden**; la primera que cae decide. Solo texto: sin modelos ni red (≈ 0 ms). Se prueba con `buscar_todo.py "<mensaje>" --explica` (muestra la decisión sin buscar) o `--auto` (decide y busca).
 | # | Señal observable en el mensaje | Decisión |
 |---|---|---|
@@ -54,7 +54,7 @@ Costos medidos (tokens de salida): ambas k3 ≈ 1,040 · ambas k2 ≈ 730 · con
 **Resultados de la prueba (288 mensajes; `tests/test_enrutador.py`):** conversaciones 92 afinadas 98 % · 91 de control (no vistas al afinar) 96 % · carpeta (51) 98 % · genéricos 100 % · seguimientos 100 % · tareas 100 % · urgentes 10/10 con 0 falsos urgentes en 278 · casos de oro 12/12. Ahorro frente a «buscar siempre en las dos con 3» (≈ 1,040): ≈ 770 tokens por mensaje en promedio (−26 %); −19/−21 % en preguntas de conversación, −5 % en carpeta, −10 % en tareas, −98 % en genéricos y seguimientos.
 **Límites honestos:** (a) la prueba se afinó con 92 de los mensajes (el control de 91 baja 2 puntos); (b) el ahorro en tareas y carpeta es pequeño porque ahí casi siempre se busca en las dos fuentes; (c) las preguntas de conversación sin verbo de pasado ni fecha caen a «ambas» (cuesta más, no falla); (d) los fallos restantes son preguntas ambiguas donde el criterio manda a buscar en las dos.
 
-**Ticket pegado** _(2026-11-26 19:55)_: si el mensaje trae un ID y es largo (≥ 3 líneas o > 160 caracteres), se busca **siempre en las dos fuentes con 2 resultados**, por **ID + título** (no por todo el texto), y se ignoran los verbos de pasado y «urgente» del cuerpo del ticket; la urgencia solo cuenta en líneas cortas sin ID (la instrucción de hoy: «hazlo YA»).
+**Ticket pegado** _(2026-11-26 19:08)_: si el mensaje trae un ID y es largo (≥ 3 líneas o > 160 caracteres), se busca **siempre en las dos fuentes con 2 resultados**, por **ID + título** (no por todo el texto), y se ignoran los verbos de pasado y «urgente» del cuerpo del ticket; la urgencia solo cuenta en líneas cortas sin ID (la instrucción de hoy: «hazlo YA»).
 
 **IDs que no son tickets** _(2026-11-26)_: prefijos con guion y número como `SHA-256`, `ISO-8601`, `RFC-2616` no cuentan como ID de ticket (lista `NO_ID` en `enrutar_busqueda.py`); `BUSCADOR_ID_PATRON` agrega el formato de tus tickets.
 
@@ -127,14 +127,14 @@ Distinctive terms, not the whole message: the ticket ID or link, the file or pat
 **Escalation:** low-confidence result → one reformulation; if it persists and only one source was searched, add the other; no more.
 **Saving rule:** one source when the signal is clear (≈ −50 % tokens), both only when it is not; 2 results instead of 3 when what is sought is exact (≈ −30 %); paths only when locating the file is enough (≈ −68 %).
 
-## 5 bis. Functional criteria implemented (router `enrutar_busqueda.py`) _(2026-11-26 19:40)_
+## 5 bis. Functional criteria implemented (router `enrutar_busqueda.py`) _(2026-11-26 19:05)_
 Signals are applied **in this order**; the first match decides. Text-only: no models, no network (≈ 0 ms). Try `buscar_todo.py "<message>" --explica` (shows the decision without searching) or `--auto` (decides and searches).
 1) greeting / thanks / short reply (<12 chars) without a ticket ID → **no search**; 2) generic request with nothing project-specific → **no search**; 3) short follow-up (≤32 chars, verb+pronoun) → **no search**; 4) past-tense verb with the user, date or "what did we decide?" **and** a written-thing signal → **both sources**; 5) spoken-only, or a past-tense question → **conversations only** (V2 Máximo); 6) written-only ("where is…", "which file…") → **folder only** (V1 Profundo), `--rutas` (k=5, ≈330 tokens) when asking to locate a file/script/path; 7) ID/URL/path/file/quote/error alone, or a task with no clear signal → **both**. Size: 2 results with an exact reference, else 3. Urgency ("YA" in caps, "hurry", "urgent", "ASAP"-type words) → `--urgente` (light mode; saves time, not tokens).
 Measured output tokens: both k3 ≈1,040 · both k2 ≈730 · conversations ≈580 · folder ≈490 · paths ≈330 · none 0.
 Results (288 messages): conversations 98 % tuned / 96 % held-out · folder 98 % · generic 100 % · follow-ups 100 % · tasks 100 % · urgent 10/10, 0 false urgents in 278 · gold cases 12/12. Average ≈770 tokens/message (−26 % vs always-both-k3); −5 % on folder and −10 % on tasks, −98 % on generic/follow-ups.
 Honest limits: tuned on 92 of the messages (held-out 2 points lower); small savings on tasks/folder because both sources are almost always searched; conversation questions with no past-tense/date cue fall to "both" (costs more, doesn't fail).
 
-**Pasted ticket** _(2026-11-26 19:55)_: an ID plus a long message (≥3 lines or >160 chars) → always both sources, 2 results, queried by **ID + title** (not the whole text); past-tense verbs and "urgent" inside the ticket body are ignored; urgency counts only on short lines without the ID (today's instruction).
+**Pasted ticket** _(2026-11-26 19:08)_: an ID plus a long message (≥3 lines or >160 chars) → always both sources, 2 results, queried by **ID + title** (not the whole text); past-tense verbs and "urgent" inside the ticket body are ignored; urgency counts only on short lines without the ID (today's instruction).
 
 **IDs that are not tickets** _(2026-11-26)_: hyphen-plus-number prefixes such as `SHA-256`, `ISO-8601`, `RFC-2616` do not count as ticket IDs (`NO_ID` list in `enrutar_busqueda.py`); `BUSCADOR_ID_PATRON` adds your own ticket format.
 

@@ -5,7 +5,7 @@ Qué hace: indexa los turnos (mensaje del usuario + texto de Claude) de las sesi
 
 Uso:  python3 -I buscar_sesiones.py "¿qué decidimos del micrófono?" [-k 5] [--sesiones DIR_O_GLOB] [--db ARCHIVO.db]
       [--excluir UUID ...] [--hoy AAAA-MM-DD] [--reindex] [--sin-sync] [--json] [--stats] [--modo MODO] [--ligero|--profundo|--maximo|--ultraligero]
-Cuatro modos. El modo BASE (archivo `modo` en la carpeta de datos; se cambia con `--modo` o con el icono de la barra de menú de macOS) lo usa toda búsqueda sin bandera; por defecto MÁXIMO si está instalado y, si no, PROFUNDO. Una bandera explícita manda sobre el modo base.
+Cuatro modos. El modo BASE (archivo `modo` en la carpeta de datos; se cambia con `--modo`) lo usa toda búsqueda sin bandera; por defecto MÁXIMO si está instalado y, si no, PROFUNDO. Una bandera explícita manda sobre el modo base.
 ULTRA LIGERO (`--ultraligero` o `--solo-v2`) = solo BM25, sin modelos (≈ 0.1 s; menor precisión; MRR 0.47). LIGERO (`--ligero`) = V2 + reordenador gte-multilingual-reranker-base sobre 20 candidatos (≈ 3–7 s; MRR 0.60). PROFUNDO (`--profundo`) = además vectores
 multilingual-e5-small (≈ 5–9 s; MRR 0.63; gana en preguntas parafraseadas o vagas). MÁXIMO (`--maximo`) = profundo + Qwen3-Reranker-0.6B reordena los 5 mejores y se promedia con gte (≈ 7–12 s; MRR 0.66; el mejor medido). Los modos con modelos corren en un programa aparte
 (buscar_profundo.py) en un entorno aislado y SIN RED. Si el modo con modelos no está instalado, se avisa y se usa V2. Instalación: scripts/buscador/preparar_profundo.py (Ligero y Profundo) y scripts/buscador/preparar_maximo.py (Máximo, opcional).
@@ -37,7 +37,7 @@ INCLUIR_HERR = True  # incluye entradas (SQL, comandos, ediciones) y resultados 
 CAP_HERR, CAP_HERR_TURNO, CAP_RES = 1500, 8000, 600
 METODO = None  # etiqueta del registro de uso; buscar_profundo.py la cambia
 PROF = BASE / "profundo"  # entorno, modelos y vectores del modo --profundo (fuera del proyecto, carpeta 700)
-MODO_ARCHIVO = Path(os.environ.get("BUSCADOR_MODO_ARCHIVO", str(BASE / "modo")))  # modo base elegido en el icono de la barra de menú o con --modo
+MODO_ARCHIVO = Path(os.environ.get("BUSCADOR_MODO_ARCHIVO", str(BASE / "modo")))  # modo base elegido con --modo
 MODOS = ("ultraligero", "ligero", "profundo", "maximo")  # nombres de cara al usuario; «v2» se acepta como sinónimo de ultraligero
 STOP = set("""a al algo ante con contra cual cuando de del desde donde el ella ellos en entre es esa ese eso esta este esto
 la las le les lo los me mi mis muy no nos o para pero por que se si sin sobre su sus te tu un una uno unos unas y ya
@@ -493,7 +493,7 @@ def _aislante():
 
 
 def modo_base():
-    """Modo base elegido (icono de la barra de menú o --modo): ultraligero, ligero, profundo o maximo. Sin archivo o con un valor raro: maximo."""
+    """Modo base elegido (con --modo): ultraligero, ligero, profundo o maximo. Sin archivo o con un valor raro: maximo."""
     try: v = MODO_ARCHIVO.read_text(encoding="utf-8").strip().lower()
     except OSError: v = ""
     v = "ultraligero" if v == "v2" else v
@@ -551,7 +551,7 @@ def main():
     ap.add_argument("--profundo", action="store_true", help="V2 + vectores e5-small → reordenador gte (MRR 0.63; ≈ 5 a 9 s por comando); es el modo por defecto si el Máximo no está instalado")
     ap.add_argument("--ligero", action="store_true", help="V2 + reordenador gte sin vectores (MRR 0.60; ≈ 3 a 7 s por comando); para lo urgente")
     ap.add_argument("--solo-v2", "--ultraligero", dest="solo_v2", action="store_true", help="ULTRA LIGERO: BM25 + prefijos sin modelos (MRR 0.47; la más rápida y la de menor precisión); no es respaldo automático: solo si se pide con la bandera o se elige como modo base")
-    ap.add_argument("--modo", nargs="?", const="?", choices=list(MODOS) + ["v2", "?"], help="elige el modo BASE (lo usa toda búsqueda sin bandera; también lo cambia el icono de la barra de menú): ultraligero, ligero, profundo o maximo; sin valor, muestra el actual")
+    ap.add_argument("--modo", nargs="?", const="?", choices=list(MODOS) + ["v2", "?"], help="elige el modo BASE (lo usa toda búsqueda sin bandera; ): ultraligero, ligero, profundo o maximo; sin valor, muestra el actual")
     a = ap.parse_args()
     if a.modo is not None:
         if a.modo != "?": guardar_modo("ultraligero" if a.modo == "v2" else a.modo)

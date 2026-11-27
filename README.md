@@ -12,7 +12,7 @@ Búsqueda 100 % local en tus **conversaciones pasadas de Claude Code**, más un 
 
 
 ## Qué incluye
-- **`scripts/buscador/`**: búsqueda de conversaciones con **cuatro modos**: **Ultra ligero** (V2: BM25 sobre palabras y prefijos de 5 letras + fusión RRF + fechas en español, SQLite FTS5, solo biblioteca estándar de Python, sin modelos), **Ligero** (candidatos de V2 reordenados por `gte-multilingual-reranker-base`), **Profundo** (suma vectores de `multilingual-e5-small`) y **Máximo** (además, `Qwen3-Reranker-0.6B` reordena los 5 mejores; es el modo por defecto cuando está instalado). El modo base se elige con `--modo` o con un **icono en la barra de menú (macOS)**; una bandera explícita (`--ligero` para lo urgente) manda sobre él. Los modos con modelos corren sin red, en un entorno aislado, con modelos de solo lectura y verificados por huella. **Al terminar la instalación el entorno queda sellado automáticamente: ni usando su Python directamente puede salir a internet** (compruébalo cuando quieras con `scripts/buscador/verificar_aislamiento.py`).
+- **`scripts/buscador/`**: búsqueda de conversaciones con **cuatro modos**: **Ultra ligero** (V2: BM25 sobre palabras y prefijos de 5 letras + fusión RRF + fechas en español, SQLite FTS5, solo biblioteca estándar de Python, sin modelos), **Ligero** (candidatos de V2 reordenados por `gte-multilingual-reranker-base`), **Profundo** (suma vectores de `multilingual-e5-small`) y **Máximo** (además, `Qwen3-Reranker-0.6B` reordena los 5 mejores; es el modo por defecto cuando está instalado). El modo base se elige con `--modo`; una bandera explícita (`--ligero` para lo urgente) manda sobre él. Los modos con modelos corren sin red, en un entorno aislado, con modelos de solo lectura y verificados por huella. **Al terminar la instalación el entorno queda sellado automáticamente: ni usando su Python directamente puede salir a internet** (compruébalo cuando quieras con `scripts/buscador/verificar_aislamiento.py`).
 - **`scripts/buscador/buscar_todo.py` (V1 + V2)**: busca a la vez en los **archivos del proyecto** (V1, con modo Profundo) y en las **conversaciones** (V2); el enrutador `--auto` decide si buscar, dónde y cuántos resultados, y un registro local (solo señales) ayuda a afinar el criterio con tu uso real.
 - **`scripts/directivas-buscador/`**: un hook que en cada mensaje inyecta solo las directivas y memorias más afines, para no cargar un archivo de reglas largo cada vez.
 - **`.context/`, `plantillas/`**: directivas de ejemplo, palabras de disparo, `CLAUDE.md`, configuración de hooks y memorias (todo ficticio; reemplázalo por lo tuyo).
@@ -42,6 +42,38 @@ Para usar las directivas y el hook en tu proyecto: copia `scripts/`, `.context/`
 
 Variables de entorno: `BUSCADOR_HOME` (dónde viven índice y modelos, por defecto `~/.memoria-local`), `CLAUDE_PROJECT_DIR`, `BUSCADOR_ZONA` (zona horaria), `BUSCADOR_SIGLAS` (siglas de 2 letras que cuentan como palabra).
 
+## Cómo funciona
+Hay **dos búsquedas locales** y un **enrutador** (solo texto, sin modelos, sin red) que decide cuál usar para cada mensaje:
+```
+ Tu mensaje o ticket ──► Enrutador (enrutar_busqueda.py, ≈ 0 ms)
+                              │
+      ┌───────────────┬───────┴────────┬──────────────────────┐
+      ▼               ▼                ▼                      ▼
+  No busca      📁 V1: lo escrito   💬 V2: lo hablado      Las dos
+  saludos,      buscar.py           buscar_sesiones.py     ticket, ID,
+  genéricos,    (carpeta)           (conversaciones)       tarea nueva
+  seguimientos        └────────┬───────┘                    │
+                               ▼  buscar_todo.py carga los modelos una vez
+                 2–3 resultados por fuente (ruta:línea o sesión:línea)
+                 + una línea «🔎 Búsqueda: …» → se abre el rango y se verifica el estado vivo
+```
+| | 📁 **V1: lo escrito** (`buscar.py`) | 💬 **V2: lo hablado** (`buscar_sesiones.py`) |
+|---|---|---|
+| **Qué busca** | Documentos, notas, scripts, trazabilidad, directivas de tu carpeta | Tus conversaciones pasadas con Claude Code |
+| **Base** | BM25 (SQLite FTS5) + capa curada opcional + prioridades por tipo de archivo | BM25 sobre palabras + prefijos de 5 letras + fechas en español |
+| **Por defecto** | **Profundo:** base + e5 + gte → 96 % de primer lugar (82 % sin modelos) | **Máximo:** V2 + e5 + gte + Qwen3 en los 5 mejores → MRR 0.66 (0.47 sin modelos) |
+| **Más ligeros** | Ligero (+ gte, igual de preciso) · rápido (solo BM25) | Profundo · Ligero · Ultra ligero |
+| **Qwen3** | ❌ empeora, no se usa | ✅ aporta (+0.033 de MRR) |
+
+| Señal en el mensaje | Qué se busca | Costo medido |
+|---|---|---|
+| Saludo, pedido genérico («explica…»), seguimiento corto | **Nada** | 0 tokens |
+| «¿Dónde está…?», «¿en qué archivo…?», una ruta o directiva | 📁 **V1** (solo rutas si basta ubicar el archivo) | ≈ 490 (≈ 330) tokens |
+| «¿Qué decidimos…?», verbos de pasado, fechas | 💬 **V2** | ≈ 580 tokens |
+| Ticket, ID, URL, tarea nueva, o sin señal clara; antes de decir «no hay» | 📁💬 **Las dos** (2 resultados si el término es exacto) | ≈ 730–1,040 tokens |
+| «YA», «apúrate», «urgente» | Lo que toque, en **modo ligero** (≈ 5 s en vez de ≈ 9 s) | no ahorra tokens, solo tiempo |
+Un **ticket pegado** se busca por su ID y título; su cuerpo no cambia la decisión. Reglas completas: [`docs/criterio-busqueda.md`](docs/criterio-busqueda.md).
+
 ## Buscar en todo: carpeta (V1) y conversaciones (V2)
 Además de las conversaciones, puedes buscar **en los archivos de tu proyecto** (notas, documentos, scripts, trazabilidad). **V1** es un índice SQLite FTS5 (BM25) de la carpeta; su **modo Profundo** mezcla (RRF) ese ranking con `multilingual-e5-small` y `gte-multilingual-reranker-base`, **los mismos modelos que ya instalas** (sin descargas nuevas). Un solo comando busca en las dos fuentes y comparte los modelos:
 ```bash
@@ -57,15 +89,11 @@ python3 -I scripts/buscador/buscar_todo.py --informe                            
 - **¿Qué carpetas necesito?** Ninguna nueva: V1 funciona sobre cualquier carpeta. Opcional: `docs/` con una línea `> **Resumen:** …` bajo el título, y un `.context/indice.md` (plantilla en `plantillas/indice.ejemplo.md`) mejoran el orden. Detalle en [`docs/instalacion.md`](docs/instalacion.md) › «Carpetas».
 
 ## Elegir el modo
-El **modo base** lo usa toda búsqueda sin bandera. Se cambia con `--modo` (en cualquier sistema) o con un **icono en la barra de menú de macOS**:
-
-![Menú del icono: Ultra ligero, Ligero, Profundo y Máximo](docs/img/menu-modos.png)
-
-Compílalo con `scripts/modo-barra-de-menu/construir.sh` y ábrelo con `open ~/.memoria-local/app/"Modo de busqueda.app"`; para que arranque solo al iniciar sesión: `scripts/modo-barra-de-menu/inicio-automatico.sh instalar` (y `quitar` para deshacerlo). Sin red y sin permisos especiales. Una bandera explícita manda sobre el modo base: `--ligero` en una búsqueda urgente sale ligera aunque el base sea Máximo.
+El **modo base** lo usa toda búsqueda sin bandera. Se cambia con `--modo` (por ejemplo, `--modo ligero`; sin valor muestra el actual). Una bandera explícita manda sobre el modo base: `--ligero` en una búsqueda urgente sale ligera aunque el base sea Máximo.
 
 ## Por qué esta opción (comparativas)
 
-![Comparativas: los cuatro modos, modelos sin V2, el camino y las alternativas](docs/img/comparativa-es.png)
+![Cómo funciona (enrutador, V1 y V2) y comparativas: los cuatro modos, modelos sin V2, el camino y las alternativas](docs/img/comparativa-es.png)
 
 > **Una persona, un historial:** las cifras son orientación, no garantía. Mide con tus propias preguntas (`scripts/buscador/evaluacion/evaluar_metodos.py`). Todo el detalle está en [`docs/resultados.md`](docs/resultados.md). **MRR** = qué tan arriba queda la respuesta correcta (1 = siempre primera).
 
@@ -165,7 +193,7 @@ MIT. Los modelos de terceros conservan sus licencias (MIT, Apache-2.0).
 
 
 ## What is inside
-- **`scripts/buscador/`** – conversation search with **four modes**: **Ultra-light** (V2: BM25 over words and 5-letter prefixes + RRF fusion + Spanish date filters, SQLite FTS5, Python standard library only, no models), **Light** (V2 candidates re-ranked by `gte-multilingual-reranker-base`), **Deep** (also adds `multilingual-e5-small` vectors) and **Max** (additionally `Qwen3-Reranker-0.6B` re-ranks the top 5; it is the default when installed). The base mode is chosen with `--modo` or with a **menu-bar icon (macOS)**; an explicit flag (`--ligero` for urgent things) wins over it. The model modes run offline in an isolated environment, with read-only, hash-verified models. **When the install finishes, the environment is sealed automatically: even running its Python directly cannot reach the internet** (verify any time with `scripts/buscador/verificar_aislamiento.py`).
+- **`scripts/buscador/`** – conversation search with **four modes**: **Ultra-light** (V2: BM25 over words and 5-letter prefixes + RRF fusion + Spanish date filters, SQLite FTS5, Python standard library only, no models), **Light** (V2 candidates re-ranked by `gte-multilingual-reranker-base`), **Deep** (also adds `multilingual-e5-small` vectors) and **Max** (additionally `Qwen3-Reranker-0.6B` re-ranks the top 5; it is the default when installed). The base mode is chosen with `--modo`; an explicit flag (`--ligero` for urgent things) wins over it. The model modes run offline in an isolated environment, with read-only, hash-verified models. **When the install finishes, the environment is sealed automatically: even running its Python directly cannot reach the internet** (verify any time with `scripts/buscador/verificar_aislamiento.py`).
 - **`scripts/buscador/buscar_todo.py` (V1 + V2)** – searches **project files** (V1, with a Deep mode) and **conversations** (V2) at once; the `--auto` router decides whether to search, where and how many results, and a local log (signals only) helps tune the criterion with your real usage.
 - **`scripts/directivas-buscador/`** – a hook that, on every message, injects only the directives and memories most relevant to it, so a long rules file does not have to be loaded every time.
 - **`.context/`, `plantillas/`** – example directives, trigger words, `CLAUDE.md`, hook settings and memory files (all fictional examples; replace them with yours).
@@ -195,6 +223,38 @@ To use the directives and hook in your own project: copy `scripts/`, `.context/`
 
 Environment variables: `BUSCADOR_HOME` (index/models location, default `~/.memoria-local`), `CLAUDE_PROJECT_DIR`, `BUSCADOR_ZONA` (time zone), `BUSCADOR_SIGLAS` (two-letter acronyms that count as words).
 
+## How it works
+There are **two local searches** and a **router** (text only, no models, no network) that decides which one to use for each message:
+```
+ Your message or ticket ──► Router (enrutar_busqueda.py, ≈ 0 ms)
+                              │
+      ┌───────────────┬───────┴────────┬──────────────────────┐
+      ▼               ▼                ▼                      ▼
+  No search     📁 V1: written      💬 V2: spoken          Both
+  greetings,    buscar.py           buscar_sesiones.py     ticket, ID,
+  generic,      (folder)            (conversations)        new task
+  follow-ups          └────────┬───────┘                    │
+                               ▼  buscar_todo.py loads the models once
+                 2–3 results per source (path:line or session:line)
+                 + one line "🔎 Search: …" → open the range and check the live state
+```
+| | 📁 **V1: what is written** (`buscar.py`) | 💬 **V2: what was said** (`buscar_sesiones.py`) |
+|---|---|---|
+| **What it searches** | Documents, notes, scripts, traceability, rules in your folder | Your past conversations with Claude Code |
+| **Base** | BM25 (SQLite FTS5) + optional curated layer + priorities by file type | BM25 on words + 5-letter prefixes + Spanish dates |
+| **Default** | **Deep:** base + e5 + gte → 96 % first place (82 % without models) | **Max:** V2 + e5 + gte + Qwen3 on the top 5 → MRR 0.66 (0.47 without models) |
+| **Lighter ones** | Light (+ gte, equally precise) · fast (BM25 only) | Deep · Light · Ultra-light |
+| **Qwen3** | ❌ hurts, not used | ✅ helps (+0.033 MRR) |
+
+| Signal in the message | What is searched | Measured cost |
+|---|---|---|
+| Greeting, generic request ("explain…"), short follow-up | **Nothing** | 0 tokens |
+| "Where is…?", "which file…?", a path or rule | 📁 **V1** (paths only if locating the file is enough) | ≈ 490 (≈ 330) tokens |
+| "What did we decide…?", past-tense verbs, dates | 💬 **V2** | ≈ 580 tokens |
+| Ticket, ID, URL, new task, or no clear signal; before saying "there is none" | 📁💬 **Both** (2 results if the term is exact) | ≈ 730–1,040 tokens |
+| "NOW", "hurry", "urgent" | Whatever applies, in **light mode** (≈ 5 s instead of ≈ 9 s) | saves time, not tokens |
+A **pasted ticket** is searched by its ID and title; its body does not change the decision. Full rules: [`docs/criterio-busqueda.md`](docs/criterio-busqueda.md).
+
 ## Search everything: folder (V1) and conversations (V2)
 Besides conversations, you can search **your project files** (notes, documents, scripts, traceability). **V1** is a SQLite FTS5 (BM25) index of the folder; its **Deep mode** fuses (RRF) that ranking with `multilingual-e5-small` and `gte-multilingual-reranker-base`, **the same models you already install** (no new downloads). One command searches both sources and shares the models:
 ```bash
@@ -210,15 +270,11 @@ python3 -I scripts/buscador/buscar_todo.py --informe                            
 - **Which folders do I need?** No new ones: V1 works on any folder. Optional: `docs/` with a `> **Resumen:** …` line under the title, and a `.context/indice.md` (template in `plantillas/indice.ejemplo.md`) improve the ordering. Details in [`docs/instalacion.md`](docs/instalacion.md) › "Folders".
 
 ## Choosing the mode
-The **base mode** is used by every search without a flag. Change it with `--modo` (any system) or with a **macOS menu-bar icon**:
-
-![Icon menu: Ultra-light, Light, Deep and Max](docs/img/menu-modos.png)
-
-Build it with `scripts/modo-barra-de-menu/construir.sh` and open it with `open ~/.memoria-local/app/"Modo de busqueda.app"`; to start it at login: `scripts/modo-barra-de-menu/inicio-automatico.sh instalar` (and `quitar` to undo). No network, no special permissions. An explicit flag wins over the base mode: `--ligero` on an urgent search runs light even if the base is Max.
+The **base mode** is used by every search without a flag. Change it with `--modo` (for example, `--modo ligero`; with no value it shows the current one). An explicit flag wins over the base mode: `--ligero` on an urgent search runs light even if the base is Max.
 
 ## Why this option (comparisons)
 
-![Comparisons: the four modes, models without V2, the path and the alternatives](docs/img/comparativa-en.png)
+![How it works (router, V1 and V2) and comparisons: the four modes, models without V2, the path and the alternatives](docs/img/comparativa-en.png)
 
 > **One person, one history:** numbers are guidance, not a guarantee. Measure with your own questions (`scripts/buscador/evaluacion/evaluar_metodos.py`). Full detail in [`docs/resultados.md`](docs/resultados.md) (Spanish). **MRR** = how high the correct answer ranks (1 = always first).
 

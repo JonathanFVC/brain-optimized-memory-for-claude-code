@@ -37,7 +37,7 @@ Al terminar corre scripts/buscador/verificar_aislamiento.py y tests/smoke_test.p
 6. **Verifica el aislamiento:** `python3.12 -I scripts/buscador/verificar_aislamiento.py` (debe terminar con «AISLADO: todo en orden») y la prueba de humo `python3.12 -I tests/smoke_test.py` (debe decir «TODO OK»).
 7. **Primera búsqueda:** `python3.12 -I scripts/buscador/buscar_sesiones.py "algo que hayan hablado" --excluir <uuid de la sesión actual>`. La primera vez indexa tus sesiones (unos segundos) y, en profundo, vectoriza (≈ 40 s por cada 6,000 turnos).
 8. **Reinicia Claude Code** para que cargue los hooks nuevos.
-9. **(Opcional) Elige el modo base:** `python3.12 -I scripts/buscador/buscar_sesiones.py --modo ligero` (valores: `ultraligero`, `ligero`, `profundo`, `maximo`; sin valor muestra el actual). En macOS, un icono en la barra de menú hace lo mismo: `scripts/modo-barra-de-menu/construir.sh` y `open ~/.memoria-local/app/"Modo de busqueda.app"`; para que arranque al iniciar sesión, `scripts/modo-barra-de-menu/inicio-automatico.sh instalar`.
+9. **(Opcional) Elige el modo base:** `python3.12 -I scripts/buscador/buscar_sesiones.py --modo ligero` (valores: `ultraligero`, `ligero`, `profundo`, `maximo`; sin valor muestra el actual).
 
 ## 3 bis. Carpetas (qué hay que tener y qué se crea solo)
 No hay carpetas nuevas obligatorias: la búsqueda de la carpeta (V1) funciona sobre **cualquier** carpeta de proyecto. Lo único que copias es lo del paso 2.
@@ -70,7 +70,6 @@ La primera búsqueda con `buscar_todo.py` indexa tu carpeta y vectoriza sus troz
 ## 6. Actualizar o desinstalar
 - **Actualizar modelos o librerías:** `python3.12 -I scripts/buscador/preparar_profundo.py --reinstalar` (necesita red; retira el sello y lo vuelve a poner).
 - **Desinstalar:** quita los hooks de `.claude/settings.json`, borra `scripts/` y `.context/` de tu proyecto y, para el índice y los modelos: en macOS `chflags -R nouchg ~/.memoria-local/profundo`; luego `chmod -R u+w ~/.memoria-local && rm -rf ~/.memoria-local`.
-- **Quitar el icono (si lo instalaste):** `scripts/modo-barra-de-menu/inicio-automatico.sh quitar` y borra `~/.memoria-local/app`; hazlo antes de mover o borrar la carpeta del proyecto.
 
 ## 7. Privacidad (léelo)
 `~/.memoria-local` contiene **una copia sin enmascarar de tus conversaciones**. No la subas, no la compartas y no la incluyas en repositorios. Más detalle en `docs/seguridad-y-privacidad.md`.
@@ -109,7 +108,7 @@ When finished, run scripts/buscador/verificar_aislamiento.py and tests/smoke_tes
 6. **Verify the isolation:** `python3.12 -I scripts/buscador/verificar_aislamiento.py` (must end with "AISLADO: todo en orden") and the smoke test `python3.12 -I tests/smoke_test.py` (must say "TODO OK").
 7. **First search:** `python3.12 -I scripts/buscador/buscar_sesiones.py "something you talked about" --excluir <current session uuid>`. The first time it indexes your sessions (a few seconds) and, in deep mode, builds vectors (≈ 40 s per 6,000 turns).
 8. **Restart Claude Code** so it loads the new hooks.
-9. **(Optional) Pick the base mode:** `python3.12 -I scripts/buscador/buscar_sesiones.py --modo ligero` (values: `ultraligero`, `ligero`, `profundo`, `maximo`; with no value it shows the current one). On macOS a menu-bar icon does the same: `scripts/modo-barra-de-menu/construir.sh` and `open ~/.memoria-local/app/"Modo de busqueda.app"`; to start it at login, `scripts/modo-barra-de-menu/inicio-automatico.sh instalar`.
+9. **(Optional) Pick the base mode:** `python3.12 -I scripts/buscador/buscar_sesiones.py --modo ligero` (values: `ultraligero`, `ligero`, `profundo`, `maximo`; with no value it shows the current one).
 
 ## 3 bis. Folders (what you need and what is created by itself)
 No new folder is mandatory: folder search (V1) works on **any** project folder. All you copy is what step 2 says.
@@ -142,7 +141,6 @@ The first `buscar_todo.py` search indexes your folder and vectorizes its chunks 
 ## 6. Update or uninstall
 - **Update models or libraries:** `python3.12 -I scripts/buscador/preparar_profundo.py --reinstalar` (needs network; removes the seal and puts it back).
 - **Uninstall:** remove the hooks from `.claude/settings.json`, delete `scripts/` and `.context/` from your project and, for the index and models: on macOS `chflags -R nouchg ~/.memoria-local/profundo`; then `chmod -R u+w ~/.memoria-local && rm -rf ~/.memoria-local`.
-- **Remove the icon (if you installed it):** `scripts/modo-barra-de-menu/inicio-automatico.sh quitar` and delete `~/.memoria-local/app`; do it before moving or deleting the project folder.
 
 ## 7. Privacy (read this)
 `~/.memoria-local` holds **an unmasked copy of your conversations**. Do not upload it, share it or include it in repositories. More detail in `docs/seguridad-y-privacidad.md`.

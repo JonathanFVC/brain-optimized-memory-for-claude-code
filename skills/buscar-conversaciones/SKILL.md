@@ -11,7 +11,7 @@ Usa esta skill cuando la pregunta es sobre **lo hablado y no documentado** («¿
 1. **Formula una consulta corta con términos distintivos** (nombres, archivos, comandos, tablas, personas y tema), no pegues el mensaje entero: con muchas palabras comunes el ranking se diluye. Una fecha en español («ayer», «la semana pasada», «el 12 de enero») filtra por día; «hoy» solo filtra si no hay otra fecha.
 2. **Corre** `python3 -I scripts/buscador/buscar_sesiones.py "<consulta>" --excluir <uuid de la sesión actual> [-k 3]` (el uuid sale del nombre del `.jsonl` de la sesión actual). Si la consulta es específica, `-k 3` ahorra tokens.
 3. **Elige el modo:**
-   - **Modo base (sin bandera):** el que el usuario haya elegido (con `--modo` o con el icono de la barra de menú); por defecto **Máximo** si está instalado (≈ 7–12 s) y, si no, **Profundo** (≈ 5–9 s).
+   - **Modo base (sin bandera):** el que el usuario haya elegido (con `--modo`); por defecto **Máximo** si está instalado (≈ 7–12 s) y, si no, **Profundo** (≈ 5–9 s).
    - **`--ligero` (≈ 3–7 s):** **solo cuando el usuario pida algo urgente** («lo necesito YA», «apúrate», «urgente»): esa búsqueda sale ligera aunque el modo base sea otro. Si no encuentra nada o termina con «→ Sugerencia: confianza baja», dile al usuario que no encontraste nada y que sigues con una búsqueda profunda, y córrela sin `--ligero`.
    - **`--ultraligero` (o `--solo-v2`):** sin modelos (≈ 0.1 s) y de menor precisión; solo si el usuario lo elige.
 4. **Lee el resultado como un mapa:** abre el rango citado (`uuid:línea` en el `.jsonl`), confirma, mira la fecha (puede haber decisiones superadas) y verifica el estado vivo.
