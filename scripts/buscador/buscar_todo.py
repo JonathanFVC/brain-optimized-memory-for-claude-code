@@ -38,17 +38,23 @@ def resultados(out):
 def registrar(msg, d, out=""):
     try:
         ahora = datetime.datetime.now(); cid = ahora.strftime("%Y%m%dT%H%M%S") + "-" + hashlib.sha1((msg + ahora.isoformat()).encode()).hexdigest()[:4]
-        _anexar(USO, {"id": cid, "ts": ahora.isoformat(timespec="seconds"), "buscar": d["buscar"], "fuente": d["fuente"], "k": d["k"], "rutas": d["rutas"], "urgente": d["urgente"], "refs": d["refs"], "motivo": d["motivo"],
+        _anexar(USO, {"id": cid, "ts": ahora.isoformat(timespec="seconds"), "buscar": d["buscar"], "fuente": d["fuente"], "k": d["k"], "rutas": d["rutas"], "urgente": d["urgente"], "refs": d["refs"], "motivo": d["motivo"], "regla": d.get("regla"), "original": d.get("original"), "accion": d.get("accion"), "sondeo": d.get("sondeo", False),
                       "tokens": d["tokens_aprox"], "largo": len(msg), "lineas": msg.count("\n") + 1, "resultados": resultados(out)})
         ULTIMA.write_text(json.dumps({"id": cid, "fuente": d["fuente"]}), encoding="utf-8"); os.chmod(ULTIMA, 0o600)
+        print(f"[registro] búsqueda {cid} (para marcarla: --marca v1|v2|ambas|ninguna <tarea> --id {cid})", file=sys.stderr)
         if len(_filas(USO)) % 25 == 0: informe()  # informe automático cada 25 mensajes
     except OSError: pass  # el registro nunca debe romper la búsqueda
 
 
-def marcar(marca, etiqueta=""):
+def marcar(marca, etiqueta="", cid=None):
     if marca not in ("v1", "v2", "ambas", "ninguna"): return "Marca inválida: usa v1, v2, ambas o ninguna (qué fuente aportó a la tarea)."
-    if not ULTIMA.exists(): return "No hay una búsqueda reciente que marcar."
-    u = json.loads(ULTIMA.read_text(encoding="utf-8")); _anexar(MARCAS, {"id": u["id"], "marca": marca, "tarea": etiqueta[:80], "ts": datetime.datetime.now().isoformat(timespec="seconds")})
+    if cid:  # una conversación puede traer varias tareas: la marca se ata a la búsqueda indicada (id completo o su inicio); si no, a la última
+        hit = [x for x in _filas(USO) if x["id"].startswith(cid)]
+        if len(hit) != 1: return f"No encuentro una sola búsqueda con id «{cid}» ({len(hit)} coincidencias)."
+        u = {"id": hit[0]["id"], "fuente": hit[0]["fuente"]}
+    elif not ULTIMA.exists(): return "No hay una búsqueda reciente que marcar."
+    else: u = json.loads(ULTIMA.read_text(encoding="utf-8"))
+    _anexar(MARCAS, {"id": u["id"], "marca": marca, "tarea": etiqueta[:80], "ts": datetime.datetime.now().isoformat(timespec="seconds")})
     return f"Marcada la búsqueda {u['id']}{' (' + etiqueta + ')' if etiqueta else ''}: aportó «{marca}» (el enrutador eligió: {u['fuente'] or 'no buscar'})."
 
 
@@ -94,13 +100,20 @@ def main():
     args = sys.argv[1:]
     msg = d = None
     if args[:1] == ["--informe"]: print(informe()); return 0
-    if args[:1] == ["--marca"]: print(marcar(args[1] if len(args) > 1 else "", " ".join(args[2:]))); return 0
+    if args[:1] == ["--calibracion"]:
+        import calibrar_enrutador as CAL; print(CAL.estado(_filas(USO), _filas(MARCAS))); return 0
+    if args[:1] == ["--marca"]:
+        r = args[1:]; cid = r[r.index("--id") + 1] if "--id" in r and r.index("--id") + 1 < len(r) else None
+        if "--id" in r: del r[r.index("--id"):r.index("--id") + 2]
+        print(marcar(r[0] if r else "", " ".join(r[1:]), cid)); return 0
     if args[:1] == ["--borrar-uso-enrutador"]:
         for x in (USO, MARCAS, ULTIMA, INFORME): x.unlink(missing_ok=True)
         print("Registro del enrutador borrado."); return 0
     if ("--auto" in args or "--explica" in args) and args and not args[0].startswith("-"):
         import enrutar_busqueda as E
         msg, resto = args[0], [x for x in args[1:] if x not in ("--auto", "--explica")]; d = E.decidir(msg)
+        if os.environ.get("BUSCADOR_CALIBRACION", "1") != "0":  # el enrutador arranca buscando en las dos y se calibra regla por regla con las marcas (calibrar_enrutador.py)
+            import calibrar_enrutador as CAL; d = CAL.aplicar(d, _filas(USO), _filas(MARCAS))
         if "--explica" in args: print(json.dumps(d, ensure_ascii=False, indent=1)); return 0
         if not d["buscar"]:
             registrar(msg, d); print(f"No hace falta buscar: {d['motivo']}.")
