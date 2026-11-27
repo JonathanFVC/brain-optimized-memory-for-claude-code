@@ -1,5 +1,12 @@
 # brain-optimized-memory-for-claude-code
 
+> ## 🚀 Instalación en un paso · One-step install
+> **🇲🇽 Descarga el zip y dáselo a tu Claude:** [**memoria-local-para-claude.zip**](https://github.com/JonathanFVC/brain-optimized-memory-for-claude-code/raw/main/memoria-local-para-claude.zip) · luego dile: *«Lee `00-LEEME-PRIMERO_READ-ME-FIRST.md` de este zip y haz la instalación y los ajustes necesarios en mi proyecto, paso a paso. Pídeme confirmación antes de cualquier descarga.»* Tu Claude copia el código, conecta los hooks y skills, instala y aísla los modelos y corre las pruebas; tú solo confirmas.
+>
+> **🇬🇧 Download the zip and give it to your Claude:** [**memoria-local-para-claude.zip**](https://github.com/JonathanFVC/brain-optimized-memory-for-claude-code/raw/main/memoria-local-para-claude.zip) · then tell it: *"Read `00-LEEME-PRIMERO_READ-ME-FIRST.md` in this zip and do the installation and the necessary adjustments in my project, step by step. Ask me for confirmation before any download."* Your Claude copies the code, wires the hooks and skills, installs and isolates the models and runs the tests; you only confirm.
+>
+> *100 % local: nada sale de tu equipo · nothing leaves your machine.*
+
 **🇲🇽 [ESPAÑOL](#español)** (primero, aquí abajo) · **🇬🇧 [ENGLISH](#english)** (below, same page)
 
 ---

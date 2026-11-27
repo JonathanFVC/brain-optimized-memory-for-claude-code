@@ -1,5 +1,8 @@
 # Manual de instalación · Installation manual
 
+> 💡 **Lo más fácil: dale el zip a tu Claude.** Descarga `memoria-local-para-claude.zip` (enlace al inicio del README) y pídele que lea `00-LEEME-PRIMERO_READ-ME-FIRST.md`: trae estos mismos pasos escritos para que Claude los ejecute, con las reglas de seguridad y la lista de verificación.
+> 💡 **Easiest: give the zip to your Claude.** Download `memoria-local-para-claude.zip` (link at the top of the README) and ask it to read `00-LEEME-PRIMERO_READ-ME-FIRST.md`: it has these same steps written for Claude to run, with the safety rules and the checklist.
+>
 > 💡 **Pídele a tu Claude que te ayude con la instalación.** Abre Claude Code en tu proyecto y pega el mensaje de la sección «Mensaje para tu Claude».
 > 💡 **Ask your Claude to help you install it.** Open Claude Code in your project and paste the message in the section "Message for your Claude".
 
@@ -30,7 +33,7 @@ Al terminar corre scripts/buscador/verificar_aislamiento.py y tests/smoke_test.p
 ## 3. Pasos
 1. **Obtén el repo:** `git clone https://github.com/JonathanFVC/brain-optimized-memory-for-claude-code.git`
 2. **Copia a tu proyecto** (en la carpeta de tu proyecto): `scripts/` → `scripts/`, `.context/` → `.context/`.
-3. **Claude Code:** copia `plantillas/CLAUDE.md` como `CLAUDE.md` (si ya tienes uno, **mezcla** el contenido, no lo reemplaces); mezcla `plantillas/settings.json` en `.claude/settings.json` (los hooks); copia `skills/*` a `.claude/skills/`; opcional: `plantillas/memory/*` a `~/.claude/projects/<tu-proyecto>/memory/` (la ruta del proyecto es su ruta con los caracteres no alfanuméricos cambiados por `-`).
+3. **Claude Code:** copia `plantillas/CLAUDE.md` como `CLAUDE.md` (si ya tienes uno, **mezcla** el contenido, no lo reemplaces); mezcla `plantillas/settings.json` en `.claude/settings.json` (los hooks; cambia `python3` por la **ruta absoluta de tu Python 3.12+**); copia también `docs/criterio-busqueda.md` a tu `docs/`; copia `skills/*` a `.claude/skills/`; opcional: `plantillas/memory/*` a `~/.claude/projects/<tu-proyecto>/memory/` (la ruta del proyecto es su ruta con los caracteres no alfanuméricos cambiados por `-`).
 4. **Genera el mapa de directivas:** `python3.12 -I scripts/directivas-buscador/directivas_buscador.py mapa` (después edita `.context/directivas.md` con **tus** reglas; las de ejemplo son ficticias).
 5. **Instala los modelos (con red, tarda varios minutos):** `python3.12 -I scripts/buscador/preparar_profundo.py`. Crea un entorno aislado en `~/.memoria-local/profundo`, descarga los dos modelos con commit fijado y huellas verificadas y, **al terminar, los sella solo contra internet** (si algo falla en el sellado, no queda marcada como lista).
 5b. **(Opcional) Agrega el nivel Máximo (con red, ≈ 1.2 GB):** `python3.12 -I scripts/buscador/preparar_maximo.py`. Descarga `Qwen3-Reranker-0.6B` (Apache-2.0) con commit fijado y huellas verificadas, lo agrega al manifiesto, comprueba que funciona sin red (en el entorno sellado y dentro de `sandbox-exec`) y vuelve a sellar; si algo falla, deja la instalación como estaba.
@@ -101,7 +104,7 @@ When finished, run scripts/buscador/verificar_aislamiento.py and tests/smoke_tes
 ## 3. Steps
 1. **Get the repo:** `git clone https://github.com/JonathanFVC/brain-optimized-memory-for-claude-code.git`
 2. **Copy into your project** (in your project folder): `scripts/` → `scripts/`, `.context/` → `.context/`.
-3. **Claude Code:** copy `plantillas/CLAUDE.md` as `CLAUDE.md` (if you already have one, **merge** it, do not replace it); merge `plantillas/settings.json` into `.claude/settings.json` (the hooks); copy `skills/*` to `.claude/skills/`; optional: `plantillas/memory/*` to `~/.claude/projects/<your-project>/memory/` (the project path is its path with non-alphanumeric characters replaced by `-`).
+3. **Claude Code:** copy `plantillas/CLAUDE.md` as `CLAUDE.md` (if you already have one, **merge** it, do not replace it); merge `plantillas/settings.json` into `.claude/settings.json` (the hooks; replace `python3` with the **absolute path of your Python 3.12+**); also copy `docs/criterio-busqueda.md` to your `docs/`; copy `skills/*` to `.claude/skills/`; optional: `plantillas/memory/*` to `~/.claude/projects/<your-project>/memory/` (the project path is its path with non-alphanumeric characters replaced by `-`).
 4. **Generate the directive map:** `python3.12 -I scripts/directivas-buscador/directivas_buscador.py mapa` (then edit `.context/directivas.md` with **your** rules; the examples are fictional).
 5. **Install the models (needs network; takes several minutes):** `python3.12 -I scripts/buscador/preparar_profundo.py`. It creates an isolated environment in `~/.memoria-local/profundo`, downloads the two models with a pinned commit and verified hashes and, **when it finishes, seals them from the internet** (if sealing fails, the install is not marked as ready).
 5b. **(Optional) Add the Max level (needs network, ≈ 1.2 GB):** `python3.12 -I scripts/buscador/preparar_maximo.py`. It downloads `Qwen3-Reranker-0.6B` (Apache-2.0) with a pinned commit and verified hashes, adds it to the manifest, checks it works offline (in the sealed environment and inside `sandbox-exec`) and seals again; if anything fails it leaves the install as it was.
