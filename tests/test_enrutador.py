@@ -18,6 +18,19 @@ CASOS = [  # (mensaje, buscar, fuente, k, urgente)
     ("ABC-123 Exportar reporte\nDescripción: pedido del cliente.\nCriterios: formato CSV.\nhazlo YA", True, "ambas", 2, True),
     ("apúrate, ¿qué dijimos del formato del reporte?", True, "conversaciones", 3, True),
     ("vamos a rehacer el modulo de exportación", True, "ambas", 3, False),
+    ("apóyame con este requerimiento", False, None, 0, False),
+    ("el panel no cuadra", False, None, 0, False),
+    ("apóyame con este requerimiento: nos piden exportar el reporte mensual de ventas en formato CSV", True, "ambas", 3, False),
+    ("ayúdame con lo de ayer", True, "conversaciones", 3, False),
+    ("¿hay forma de instalar node en windows?", False, None, 0, False),  # cómo-hacer general: se resuelve en la web
+    ("brew install jq", False, None, 0, False),  # comando pegado
+    ("checa el slack y dime qué pidió el cliente", False, None, 0, False),  # fuente externa: se lee primero
+    ("[Image #1]", False, None, 0, False),  # imagen sin texto: se lee primero
+    ("https://example.com/guia", False, None, 0, False),  # enlace externo solo: se abre primero
+    ("listo que sigue?", False, None, 0, False),  # seguimiento dentro de la sesión
+    ("dime cómo quedó lo del reporte de ventas", True, "ambas", 3, False),  # trabajo en curso o en cola
+    ("como sigue lo del reporte mensual", True, "ambas", 3, False),
+    ("revisa ~/Descargas/Reporte_Ventas_Q3.xlsx y dime qué falta", True, "ambas", 2, False),  # adjunto por ruta: se lee y se busca por nombre y tema
 ]
 fallas = 0
 for msg, buscar, fuente, k, urgente in CASOS:

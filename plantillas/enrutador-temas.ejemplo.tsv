@@ -1,0 +1,5 @@
+# Temas propios → fuente que conviene buscar (OPCIONAL). Copia este archivo a .context/enrutador-temas.tsv de tu proyecto y cámbialo.
+# Formato: raíz de palabra<TAB>fuente<TAB>nota. Fuente: conv | carp | ambas | ninguna (ninguna = no buscar; p. ej. búsqueda en la web).
+# La raíz se compara con el inicio de cada palabra del mensaje, sin acentos ni mayúsculas. Evita que un mensaje corto con una palabra tuya se trate como vago.
+deploy	ambas	ejemplo: despliegues
+backup	ambas	ejemplo: respaldos

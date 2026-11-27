@@ -58,6 +58,26 @@ Costos medidos (tokens de salida): ambas k3 ≈ 1,040 · ambas k2 ≈ 730 · con
 
 **IDs que no son tickets** _(2026-11-26)_: prefijos con guion y número como `SHA-256`, `ISO-8601`, `RFC-2616` no cuentan como ID de ticket (lista `NO_ID` en `enrutar_busqueda.py`); `BUSCADOR_ID_PATRON` agrega el formato de tus tickets.
 
+## 5 ter. Pedidos sin ticket y reglas de entrada del enrutador _(2026-11-27)_
+El enrutador busca con el **contenido** del pedido (no con la instrucción) y distingue estas situaciones:
+| Situación | Ejemplo | Qué hace el enrutador |
+|---|---|---|
+| **Pedido claro sin ticket** | «agrega la columna estado a la tabla de visitantes» | Las dos fuentes (3 resultados) con el contenido |
+| **Referencia al pasado** | «ayúdame con lo de ayer» | Solo conversaciones (fechas en español; «lo de…» con al menos 2 palabras de contenido) |
+| **Pedido vago u objeto sin contenido** | «el panel no cuadra», «apóyame con este requerimiento» | **No busca**: menos de 3 palabras de contenido y sin nombres, siglas ni IDs; quien trabaja mira primero el adjunto o lo último de la conversación y hace **una** pregunta cerrada |
+| **Texto pegado** (chat, correo) con o sin ID | un mensaje pegado tras «apóyame» | Busca por el ID y el **título real** (la línea con contenido), no por saludos ni por la instrucción |
+| «¿Hay forma de…?», «instalar… en mac/windows/linux», «paso a paso» | «¿hay forma de instalar node en windows?» | **No busca**: se resuelve en la web |
+| Comando o configuración pegado | `brew install jq` | **No busca** |
+| Enlace externo sin más contexto | una URL suelta | **No busca**: se abre el enlace primero (los dominios de tu tracker van en `BUSCADOR_DOMINIOS_PROPIOS`) |
+| Slack o Jira **con intención de leerlos** | «checa el slack y dime qué pidió…» (no «mándalo por slack») | **No busca**: se lee primero |
+| Imagen o captura sin texto útil | `[Image #1]` | **No busca**: se lee primero |
+| **Documento adjunto por ruta** (pdf, xlsx, docx, csv…) | «revisa ~/Descargas/Reporte_Q3.xlsx» | **Las dos fuentes (2 resultados)**: el archivo se LEE por su ruta y se busca por su **nombre completo y el tema** (V1 solo indexa la carpeta del proyecto, así que un archivo de Descargas no lo «encuentra» V1) |
+| «Dime cómo quedó…», «cómo va…», «qué falta…», «en qué quedamos» | «dime cómo quedó lo del reporte de ventas» | **Las dos fuentes** (trabajo en curso o en cola); una fecha o «decidimos» sigue mandando a conversaciones |
+| «¿Qué sigue?», «listo, ¿qué sigue?» (≤ 60 caracteres) | «listo que sigue?» | **No busca**: sigue lo que se está haciendo en la sesión; «cómo sigue X» sí busca |
+| «Recuerdas…» o «lo de…» solos | | **Las dos** (señal débil del pasado) |
+| Tus **temas propios** (`.context/enrutador-temas.tsv`, opcional; ejemplo en `plantillas/enrutador-temas.ejemplo.tsv`) | una palabra que siempre ha sido de tu trabajo | La fuente que indiques; evita que un mensaje corto con esa palabra se trate como vago |
+**Validación:** reglas congeladas antes de etiquetar y etiquetas puestas a ciegas, con mensajes reales del autor en cuatro tandas. Acierto del enrutador anterior contra el nuevo: tanda 2 70 % → 80 %; tanda 3 61 % → 90 % (17 casos a favor, 0 en contra); tanda 4 (44 mensajes) 27 % → 68 % (18 a favor, 0 en contra); adjuntos 10 % → 100 %; tokens por mensaje 956 → 610. Criterios de aceptación fijados antes: coincide ≥ lo anterior, gana ≥ pierde por pares, «no busca (debía)» ≤ lo anterior + 1 y tokens ≤ lo anterior + 10 %; se cumplieron los cuatro. **Límite:** el enrutador no sabe si el mensaje es el primero de la sesión; las instrucciones dentro de una sesión se resuelven con el contexto, no con el enrutador. Son cifras del autor con sus mensajes: mide con los tuyos.
+
 ## 6. Qué se hace con el resultado
 - Es un **mapa**, no la respuesta: se abre el rango citado (`ruta:línea` o `sesión:línea`), se mira la **fecha** (puede haber decisiones superadas) y se **verifica el estado vivo** antes de afirmar algo.
 - La confianza «baja» no se cita como hecho; «media» y «alta» se verifican igual.
@@ -137,6 +157,26 @@ Honest limits: tuned on 92 of the messages (held-out 2 points lower); small savi
 **Pasted ticket** _(2026-11-26 19:08)_: an ID plus a long message (≥3 lines or >160 chars) → always both sources, 2 results, queried by **ID + title** (not the whole text); past-tense verbs and "urgent" inside the ticket body are ignored; urgency counts only on short lines without the ID (today's instruction).
 
 **IDs that are not tickets** _(2026-11-26)_: hyphen-plus-number prefixes such as `SHA-256`, `ISO-8601`, `RFC-2616` do not count as ticket IDs (`NO_ID` list in `enrutar_busqueda.py`); `BUSCADOR_ID_PATRON` adds your own ticket format.
+
+## 5 ter. Requests without a ticket and the router's entry rules _(2026-11-27)_
+The router searches with the **content** of the request (not the instruction) and tells these situations apart:
+| Situation | Example | What the router does |
+|---|---|---|
+| **Clear request, no ticket** | "add the status column to the visitors table" | Both sources (3 results) with the content |
+| **Reference to the past** | "help me with yesterday's thing" | Conversations only (Spanish dates; "lo de…" with at least 2 content words) |
+| **Vague request or no content** | "the panel does not add up", "help me with this requirement" | **No search**: fewer than 3 content words and no names, acronyms or IDs; whoever works on it looks at the attachment or the latest of the conversation first and asks **one** closed question |
+| **Pasted text** (chat, email) with or without an ID | a message pasted after "help me" | Searches by the ID and the **real title** (the line with content), not by greetings or the instruction |
+| "Is there a way to…", "install… on mac/windows/linux", step by step | "is there a way to install node on windows?" | **No search**: look it up on the web |
+| Pasted command or configuration | `brew install jq` | **No search** |
+| External link with no context | a bare URL | **No search**: open the link first (your tracker's domains go in `BUSCADOR_DOMINIOS_PROPIOS`) |
+| Slack or Jira **with intent to read them** | "check slack and tell me what the client asked" (not "send it by slack") | **No search**: read first |
+| Image or screenshot with no useful text | `[Image #1]` | **No search**: read first |
+| **Document attached by path** (pdf, xlsx, docx, csv…) | "review ~/Downloads/Report_Q3.xlsx" | **Both sources (2 results)**: the file is READ by its path and searched by its **full name and topic** (V1 only indexes the project folder, so a file in Downloads is not "found" by V1) |
+| "Tell me how X turned out", "how is X going", "what is missing" | "tell me how the sales report turned out" | **Both sources** (work in progress or queued); a date or "we decided" still sends it to conversations |
+| "What's next?", "ok, what's next?" (≤ 60 characters) | "listo que sigue?" | **No search**: continue what is being done in the session; "how is X going" does search |
+| A bare "do you remember…" or "lo de…" | | **Both** (weak signal of the past) |
+| Your **own topics** (`.context/enrutador-temas.tsv`, optional; example in `plantillas/enrutador-temas.ejemplo.tsv`) | a word that has always been part of your work | The source you indicate; keeps a short message with that word from being treated as vague |
+**Validation:** rules frozen before labeling and labels set blind, with the author's real messages in four batches. Accuracy of the previous router against the new one: batch 2 70 % → 80 %; batch 3 61 % → 90 % (17 wins, 0 losses); batch 4 (44 messages) 27 % → 68 % (18 wins, 0 losses); attachments 10 % → 100 %; tokens per message 956 → 610. Acceptance criteria fixed beforehand: matches ≥ previous, wins ≥ losses by pairs, "no search (should have)" ≤ previous + 1 and tokens ≤ previous + 10 %; all four were met. **Limit:** the router cannot tell whether a message is the first of the session; instructions inside a session are resolved with context, not with the router. These are the author's figures with their own messages: measure with yours.
 
 ## 6. What to do with the result
 - It is a **map**, not the answer: open the cited range (`path:line` or `session:line`), check the **date** (decisions may be superseded) and **verify the live state** before asserting anything.

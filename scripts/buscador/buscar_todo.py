@@ -102,9 +102,12 @@ def main():
         import enrutar_busqueda as E
         msg, resto = args[0], [x for x in args[1:] if x not in ("--auto", "--explica")]; d = E.decidir(msg)
         if "--explica" in args: print(json.dumps(d, ensure_ascii=False, indent=1)); return 0
-        if not d["buscar"]: registrar(msg, d); print(f"No hace falta buscar: {d['motivo']}."); return 0
+        if not d["buscar"]:
+            registrar(msg, d); print(f"No hace falta buscar: {d['motivo']}.")
+            if d.get("siguiente"): print("→ " + d["siguiente"])
+            return 0
         print(f"[enrutador] {d['fuente']} · {d['k']} resultados{' · rutas' if d['rutas'] else ''}{' · urgente' if d['urgente'] else ''} · ≈ {d['tokens_aprox']} tokens · {d['motivo']}", file=sys.stderr)
-        if d["rutas"]: return ejecutar([sys.executable, "-I", str(AQUI / "buscar.py"), msg, "--rutas", "-k", "5"], msg=msg, d=d)
+        if d["rutas"]: return ejecutar([sys.executable, "-I", str(AQUI / "buscar.py"), d.get("consulta", msg), "--rutas", "-k", "5"], msg=msg, d=d)
         args = [d.get("consulta", msg), "-k", str(d["k"])] + ([] if d["fuente"] == "ambas" else ["--solo", d["fuente"]]) + (["--urgente"] if d["urgente"] else []) + [x for x in resto if x not in ("--urgente", "--ligero")]
     py = PROF / "venv" / "bin" / "python"
     if not py.exists(): print("[ALTO] falta el entorno de modelos (~/.memoria-local/profundo/venv); prepáralo con preparar_profundo.py.", file=sys.stderr); return 2
